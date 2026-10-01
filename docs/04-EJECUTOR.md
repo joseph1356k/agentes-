@@ -60,7 +60,7 @@ Credenciales de la cola en `~/.oficina/credentials.json` (JWT de Supabase del de
    - informe estructurado → `verifyResult()` cruza `tests[]` con `.oficina/evidence/ev_*.json` → `review` (verificado o con flag `unverified`) o `blocked`.
 7. Push final, subida de evidencia a Storage (`evidence/<mission>/`), PR idempotente (`operations` clave `mission:<id>:pr`) contra `base_branch` (la rama del padre en sub-misiones), `transition` final con `head_sha`, `session_id`, `cost_usd`, `result`, `pr_url`.
 8. **CI del PR (M6)**: consulta `gh pr checks` hasta `ci_wait_ms`; si falla, reanuda la sesión con los logs de los jobs rojos (`ci_fix_rounds`), empuja y vuelve a esperar. Estado en `missions.ci`.
-9. Sub-misiones: cuando la última hija llega a `review` o más allá, un trigger reencola a la misión padre bloqueada "esperando sub-misiones" (con preferencia por su ejecutor) para que integre, corra la suite completa y verifique la spec.
+9. Sub-misiones: `claim_mission` no entrega una hija mientras la sesión del padre siga activa (`claimed/preparing/running`), porque su rama base se empuja al terminar esa sesión; tampoco mientras falte una dependencia (`depends_on`). Cuando la última hija llega a `review` o más allá, el trigger `missions_requeue_parent` reencola a la misión padre bloqueada "esperando sub-misiones" (con preferencia por su ejecutor); el ejecutor detecta que todas las hijas están entregadas (`integrationPhase`) y abre la sesión con la instrucción de integrar, correr la suite completa y verificar la spec. Todo esto está cubierto por `supabase/smoke.sql` (`scripts/sql-smoke.sh`) y `runner.test.ts`.
 
 ## 4. Sesión con el Agent SDK (`src/providers/claude.ts`)
 

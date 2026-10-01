@@ -53,7 +53,11 @@ La rama de misión ya existe con trabajo previo: lee .oficina/notes.md, .oficina
 Tienes las herramientas de la oficina (mcp__oficina__*): mission_get, plan_set, acceptance_set, decision_record, learning_record, child_mission_create, review_request, attention. Al terminar, el informe final debe cumplir el esquema de salida estructurada (status, tests con evidence_id reales, etc.).
 ```
 
-Las líneas condicionales solo aparecen cuando aplican (subdir, criterio, decisiones, sub-misión, gate de plan, rama retomada).
+Las líneas condicionales solo aparecen cuando aplican (subdir, criterio, decisiones, sub-misión, gate de plan, rama retomada). Cuando la misión tiene sub-misiones y todas están entregadas (el padre vuelve a la cola por el trigger `missions_requeue_parent`), el ejecutor abre con `/oficina:mission` y añade:
+
+```
+Todas las sub-misiones están entregadas: esta sesión es la FASE DE INTEGRACIÓN. Usa mission_get para ver sus ramas y PRs, intégralas en tu rama (merge), resuelve conflictos, corre la suite completa con oficina-run, verifica la spec punto por punto (criterio global), actualiza docs/specs y termina con el informe estructurado para pasar a revisión. Si alguna hija quedó parcial o bloqueada, no presentes la entrega como completa.
+```
 
 ### Reanudación (`buildResumePrompt`)
 

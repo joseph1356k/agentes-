@@ -78,6 +78,11 @@ if [ "${1:-}" = "--full" ]; then
   (cd "$root/executor" && pnpm -s typecheck >/dev/null 2>&1) && ok "ejecutor typecheck" || bad "ejecutor typecheck"
   (cd "$root/executor" && pnpm -s test >/dev/null 2>&1) && ok "ejecutor pruebas" || bad "ejecutor pruebas"
   (cd "$root/dashboard" && pnpm -s exec tsc --noEmit >/dev/null 2>&1) && ok "dashboard typecheck" || bad "dashboard typecheck"
+  if command -v psql >/dev/null 2>&1; then
+    (bash "$root/scripts/sql-smoke.sh" 2>&1 | grep -q 'SMOKE OK') && ok "smoke SQL (scripts/sql-smoke.sh)" || bad "smoke SQL falla"
+  else
+    printf 'skip smoke SQL: psql no disponible\n'
+  fi
 fi
 
 printf '\n%d comprobaciones, %d fallos\n' "$n" "$fail"

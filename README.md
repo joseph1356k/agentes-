@@ -17,9 +17,9 @@ Estado: **Fase 1 + iteración 2 (1 oct 2026)**. Repos identificados por inspecci
 |---|---|---|
 | `office-kit/` | Plugin de Claude Code: 8 agentes con system prompt completo (tech lead, 6 especialistas, revisor), 22 skills: protocolo y estándar de ingeniería (precargados), `mission`, `spec` (funcionalidades complejas → sub-misiones), `handoff`, `evidence`, `review`, `triage`, `inventory`, 7 recetas (`recipe-feature/bugfix/migration/refactor/incident/release/ui-verification`), 6 playbooks; hooks de guarda y evidencia, `oficina-run`, esquema del informe, plantillas (`SPEC.md`, `HANDOFF.md`, `REPO.md`) | validado (`claude plugin validate --strict`), 56 pruebas de hooks |
 | `supabase/migrations/0001_oficina.sql` | Cola, misiones (con plan, dependencias, sub-misiones, verificación, revisión, CI), eventos, preguntas, evidencia, aprendizajes, tickets, alertas, aprobaciones, RPCs (`claim_mission`, `transition_mission`, `approve_mission`, `mark_orphans`...), trigger de reencolado del padre, pg_cron, RLS, vistas de métricas | smoke test en Postgres 16 |
-| `executor/` | Daemon local (TypeScript + Agent SDK + Supabase): claim → worktree → setup → sesión (chat en vivo, preguntas diferidas, herramientas MCP `oficina`) → verificación independiente → revisión automática → push/PR → CI del PR, con rondas de corrección; `doctor` para comprobar la máquina | typecheck + 23 pruebas; integración con modelo se valida en la primera misión real |
+| `executor/` | Daemon local (TypeScript + Agent SDK + Supabase): claim → worktree → setup → sesión (chat en vivo, preguntas diferidas, herramientas MCP `oficina`) → verificación independiente → revisión automática → push/PR → CI del PR, con rondas de corrección; `doctor` para comprobar la máquina | typecheck + 30 pruebas; integración con modelo se valida en la primera misión real |
 | `dashboard/` | Next.js 15 + Supabase: tablero en vivo, intake (tipo `epic`, aprobación de plan, revisión obligatoria), detalle de misión (chat, preguntas, plan, sub-misiones, verificación/revisión/CI, evidencia, informe, aprobación por SHA), ejecutores, tickets, aprendizajes, ingesta de feedback | `next build` limpio + humo en 7 rutas; listo para importar en Vercel (ver `docs/09-ARRANQUE-FASE-1.md`) |
-| `evals/` | Evals estáticas (consistencia kit/ejecutor/esquema/dashboard/docs, 71 comprobaciones) y dinámicas (3 misiones sintéticas calificadas sin fiarse del informe) | estáticas en verde; dinámicas requieren `claude login` |
+| `evals/` | Evals estáticas (consistencia kit/ejecutor/esquema/dashboard/docs, 72 comprobaciones) y dinámicas (3 misiones sintéticas calificadas sin fiarse del informe) | estáticas en verde; dinámicas requieren `claude login` |
 | `supabase/seed.sql` | Miembro inicial, repos `u` y `miracle-ai`, bucket de evidencia | pendiente de aplicar (proyecto bloqueado por plan) |
 | `scripts/install-executor.sh` | Instala el ejecutor en un computador del equipo (kit enlazado, build, lanzador, config) | — |
 | `scripts/inventory.sh` · `scripts/build-prompts-doc.sh` | Inventario determinista de un repo · regeneración de `docs/11-SYSTEM-PROMPTS.md` | probados |
@@ -38,7 +38,7 @@ claude --plugin-dir ~/oficina/office-kit --agent oficina:tech-lead
 > /oficina:recipe-bugfix             # receta del tipo de tarea (feature, bugfix, migration, refactor, incident, release, ui-verification)
 ```
 
-Añade a `.gitignore` del repo: `.oficina/evidence/`, `.oficina/notes.md`, `graphify-out/`. Comprobaciones del propio sistema: `bash evals/static.sh --full`.
+Añade a `.gitignore` del repo: `.oficina/evidence/`, `.oficina/notes.md`, `graphify-out/`. Comprobaciones del propio sistema: `bash evals/static.sh --full` (incluye `scripts/sql-smoke.sh` si hay Postgres local) y, con `claude login`, `node evals/run.mjs`.
 
 ## Principios que no se negocian
 

@@ -29,9 +29,19 @@ interface SessionOutcome {
 }
 
 /** Prompt inicial de la misión (la sesión principal es el tech lead). */
-export function buildInitialPrompt(mission: MissionRow, repo: RepoRow, resumedBranch: boolean): string {
+const CHILD_DONE: MissionStatus[] = ['review', 'staging', 'approved', 'released', 'verified'];
+
+/** Fase de integración: la misión tiene sub-misiones y todas están entregadas (en revisión o más allá). */
+export function integrationPhase(children: Array<Pick<MissionRow, 'status'>>): boolean {
+  return children.length > 0 && children.every(c => CHILD_DONE.includes(c.status) || c.status === 'cancelled') && children.some(c => CHILD_DONE.includes(c.status));
+}
+
+const INTEGRATION_NOTE = 'Todas las sub-misiones están entregadas: esta sesión es la FASE DE INTEGRACIÓN. Usa mission_get para ver sus ramas y PRs, intégralas en tu rama (merge), resuelve conflictos, corre la suite completa con oficina-run, verifica la spec punto por punto (criterio global), actualiza docs/specs y termina con el informe estructurado para pasar a revisión. Si alguna hija quedó parcial o bloqueada, no presentes la entrega como completa.';
+
+export function buildInitialPrompt(mission: MissionRow, repo: RepoRow, resumedBranch: boolean, integration = false): string {
   const parts: string[] = [];
-  if (mission.kind === 'inventory') parts.push('/oficina:inventory');
+  if (integration) parts.push(`/oficina:mission "${mission.title.replace(/"/g, "'")}"`);
+  else if (mission.kind === 'inventory') parts.push('/oficina:inventory');
   else if (mission.kind === 'triage') parts.push('/oficina:triage');
   else if (mission.kind === 'epic') parts.push(`/oficina:spec "${mission.title.replace(/"/g, "'")}"`);
   else parts.push(`/oficina:mission "${mission.title.replace(/"/g, "'")}"`);
@@ -43,13 +53,15 @@ export function buildInitialPrompt(mission: MissionRow, repo: RepoRow, resumedBr
   if (mission.parent_mission_id) parts.push(`Esta es una sub-misión de ${mission.parent_mission_id}: su rama base es la rama de la misión padre; respeta los contratos acordados en la spec (ver mission_get).`);
   if (mission.require_plan_approval) parts.push('Esta misión exige aprobación humana del plan: registra el plan con la herramienta oficina.plan_set y pregunta con AskUserQuestion "¿Apruebas el plan?" antes de modificar código.');
   if (resumedBranch) parts.push('La rama de misión ya existe con trabajo previo: lee .oficina/notes.md, .oficina/report.md si existe y `git log`, y continúa desde ahí sin rehacer lo hecho.');
+  if (integration) parts.push(INTEGRATION_NOTE);
   parts.push('Tienes las herramientas de la oficina (mcp__oficina__*): mission_get, plan_set, acceptance_set, decision_record, learning_record, child_mission_create, review_request, attention. Al terminar, el informe final debe cumplir el esquema de salida estructurada (status, tests con evidence_id reales, etc.).');
   return parts.join('\n');
 }
 
-export function buildResumePrompt(mission: MissionRow, previous: MissionStatus | null, userMessages: string[]): string {
+export function buildResumePrompt(mission: MissionRow, previous: MissionStatus | null, userMessages: string[], integration = false): string {
   const parts: string[] = [];
-  if (previous === 'waiting_answer') parts.push('El humano respondió tus preguntas (las recibes al reintentar AskUserQuestion). Continúa la misión.');
+  if (integration) parts.push(INTEGRATION_NOTE);
+  else if (previous === 'waiting_answer') parts.push('El humano respondió tus preguntas (las recibes al reintentar AskUserQuestion). Continúa la misión.');
   else if (previous === 'changes_requested') parts.push('El revisor humano pidió cambios. Atiéndelos, vuelve a correr las pruebas con oficina-run y actualiza el informe.');
   else if (previous === 'paused_quota') parts.push('La sesión se pausó por cuota. Continúa exactamente donde ibas.');
   else if (previous === 'paused') parts.push('La misión fue pausada por el humano y ahora se reanuda. Continúa donde ibas.');
@@ -116,9 +128,11 @@ export async function runMission(ctx: RunnerContext, claimed: MissionRow): Promi
     const resume = shouldResumeSession(previousStatus, sameExecutor, sessionId);
     const sinceIso = resume ? await queue.lastEventTs(mission.id, 'result') : null;
     const userMessages = resume ? await queue.userMessagesSince(mission.id, sinceIso) : [];
+    const integration = integrationPhase(await queue.childMissions(mission.id));
+    if (integration) await queue.event(mission.id, 'integration', null, { note: 'todas las sub-misiones entregadas; sesión de integración' });
     const firstInput: RunInput = resume && sessionId
-      ? { kind: 'resume', sessionId, text: buildResumePrompt(mission, previousStatus, userMessages) }
-      : { kind: 'prompt', text: buildInitialPrompt(mission, repo, ws.resumedBranch) };
+      ? { kind: 'resume', sessionId, text: buildResumePrompt(mission, previousStatus, userMessages, integration) }
+      : { kind: 'prompt', text: buildInitialPrompt(mission, repo, ws.resumedBranch, integration) };
 
     const schema = JSON.parse(await readFile(join(config.office_kit_path, 'schemas', 'mission-result.schema.json'), 'utf8')) as Record<string, unknown>;
     const stripFrontmatter = (s: string) => s.replace(/^---[\s\S]*?---\s*/m, '');

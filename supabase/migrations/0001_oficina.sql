@@ -397,6 +397,10 @@ begin
        left join missions dm on dm.id = d.id
        where dm.id is null or dm.status not in ('review','staging','approved','released','verified')
      )
+     -- una sub-misión no se reclama mientras la sesión del padre sigue activa (su rama base aún no está empujada)
+     and (m.parent_mission_id is null or exists (
+       select 1 from missions p where p.id = m.parent_mission_id and p.status not in ('claimed','preparing','running')
+     ))
      and (m.preferred_executor_id is null or m.preferred_executor_id = p_executor_id
           or m.updated_at < now() - interval '10 minutes')  -- la preferencia caduca
    order by coalesce(m.preferred_executor_id = p_executor_id, false) desc, m.priority desc, m.created_at asc

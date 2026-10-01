@@ -27,7 +27,7 @@ Versión 1.0 · 1 de octubre de 2026. Objetivo: que la oficina pueda sacar funci
 | **M5** | Herramientas de la oficina para el agente | Servidor MCP en proceso del ejecutor (`oficina`): `mission_get`, `plan_set`, `acceptance_set`, `decision_record`, `learning_record`, `child_mission_create`, `review_request`, `attention`. El agente nunca ve credenciales; el ejecutor persiste en Supabase | `executor/src/office-tools.ts` |
 | **M6** | CI del PR | Tras crear el PR, el ejecutor consulta `gh pr checks` hasta 30 min; si falla, reanuda la sesión con los logs una vez (`ci_fix_rounds`), empuja y vuelve a esperar | `executor/src/ci.ts` |
 | **M7** | Verificación independiente | Tras la sesión, el ejecutor corre `test`, `lint`, `typecheck` del repo/subproyecto por su cuenta; registra `ev_exec_*`; si algo falla, una ronda de corrección (`verify_fix_rounds`) y, si persiste, `review` con `executor_checks` en rojo | `executor/src/verify.ts` |
-| **M8** | Evals | `evals/`: **estáticas** (`static.sh`, 71 comprobaciones de consistencia entre kit, ejecutor, esquema, dashboard y docs; corren en CI sin modelo) y **dinámicas** (`run.mjs`: bug conocido, feature pequeña, pregunta obligatoria, sobre un repo fixture; el calificador corre las pruebas por su cuenta y detecta evidencia falsa o pruebas debilitadas). Las dinámicas se corren en un computador con `claude login` | `evals/` |
+| **M8** | Evals | `evals/`: **estáticas** (`static.sh`, 72 comprobaciones de consistencia entre kit, ejecutor, esquema, dashboard y docs; corren en CI sin modelo) y **dinámicas** (`run.mjs`: bug conocido, feature pequeña, pregunta obligatoria, sobre un repo fixture; el calificador corre las pruebas por su cuenta y detecta evidencia falsa o pruebas debilitadas). Las dinámicas se corren en un computador con `claude login` | `evals/` |
 | **M9** | Revisión automática | Para riesgo ≥ medio, nivel N3 o `require_review`: sesión aparte con el perfil `revisor` (solo lectura, modelo fuerte, contexto limpio). Hallazgos bloqueantes → una ronda de corrección del lead; veredicto en `missions.review` y en el dashboard | `executor/src/review.ts` |
 
 Además: **misiones padre/hijas con dependencias** (`depends_on`, `base_branch`, tipo `epic`): `/oficina:spec` escribe la spec (`docs/specs/<slug>.md`, plantilla `SPEC.md`: contratos explícitos, fases integrables, criterio por fase), la registra y crea las sub-misiones con `child_mission_create`; el ejecutor las atiende en orden (una hija no se reclama hasta que sus dependencias estén en `review`), cada una hace PR contra la rama del padre; cuando la última llega a `review`, un trigger reencola al padre para integrar, correr la suite completa y verificar la spec. **System prompts completos** de los 8 agentes y un estándar de ingeniería precargado (`oficina:estandar`): `docs/11-SYSTEM-PROMPTS.md` (generado con `scripts/build-prompts-doc.sh`).
@@ -48,8 +48,8 @@ Contenedores por tarea (los ejecutores son las máquinas del equipo; sandbox opc
 | Pieza | Comprobación | Resultado |
 |---|---|---|
 | Kit | `claude plugin validate --strict` (plugin, agentes, skills); 56 pruebas de hooks | verde |
-| Esquema | smoke test en Postgres 16 (claim con `depends_on`/plataforma, aprendizajes, triggers) | verde |
-| Ejecutor | `tsc --noEmit`; 23 pruebas (estado, evidencia, worktrees, verificación) | verde |
+| Esquema | smoke test en Postgres 16 (`scripts/sql-smoke.sh`: claim con `depends_on`/plataforma, gating de sub-misiones, reencolado del padre, aprendizajes) | verde |
+| Ejecutor | `tsc --noEmit`; 30 pruebas (estado, evidencia, worktrees, verificación, prompts e integración) | verde |
 | Dashboard | `tsc --noEmit`; `next build`; humo HTTP en 7 rutas | verde |
-| Evals | 71 comprobaciones estáticas; 6 pruebas del calificador (lead honesto vs tramposo) | verde |
+| Evals | 72 comprobaciones estáticas; 6 pruebas del calificador (lead honesto vs tramposo) | verde |
 | Con modelo | 3 evals dinámicas y primera misión real | **pendiente**: requiere `claude login` en un computador del equipo |
