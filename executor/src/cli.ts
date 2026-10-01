@@ -6,6 +6,7 @@ import { createInterface } from 'node:readline/promises';
 import { createClient } from '@supabase/supabase-js';
 import { OFICINA_HOME, loadConfig, loadAuth, startDaemon } from './daemon.js';
 import { Queue } from './queue.js';
+import { doctor } from './doctor.js';
 
 const VERSION = '0.1.0';
 
@@ -33,7 +34,7 @@ async function login(): Promise<void> {
 async function register(): Promise<void> {
   const config = await loadConfig();
   const queue = new Queue(config.supabase_url, config.supabase_anon_key, await loadAuth());
-  const id = await queue.registerExecutor(config.hostname, { billing: config.billing_mode, max_parallel: config.max_parallel, version: VERSION, providers: ['claude'] });
+  const id = await queue.registerExecutor(config.hostname, { billing: config.billing_mode, max_parallel: config.max_parallel, version: VERSION, providers: ['claude'], platform: process.platform });
   const repos = await queue.linkRepos(id, config.repos);
   console.log(`ejecutor ${id} registrado · repos enlazados: ${repos.map(r => r.slug).join(', ') || 'ninguno (crea las filas en repos primero)'}`);
 }
@@ -52,12 +53,13 @@ async function initConfig(): Promise<void> {
   await mkdir(OFICINA_HOME, { recursive: true });
   const p = join(OFICINA_HOME, 'config.json');
   try { await readFile(p); console.log(`${p} ya existe`); return; } catch { /* crear */ }
+  // Permite rellenar desde el entorno: OFICINA_SUPABASE_URL, OFICINA_SUPABASE_ANON_KEY, OFICINA_KIT, OFICINA_REPO_U (ruta local del monorepo Ü)
   const example = {
-    supabase_url: 'https://<proyecto>.supabase.co',
-    supabase_anon_key: '<anon key>',
-    office_kit_path: join(OFICINA_HOME, 'office-kit'),
+    supabase_url: process.env.OFICINA_SUPABASE_URL ?? 'https://<proyecto>.supabase.co',
+    supabase_anon_key: process.env.OFICINA_SUPABASE_ANON_KEY ?? '<anon key>',
+    office_kit_path: process.env.OFICINA_KIT ?? join(OFICINA_HOME, 'office-kit'),
     worktrees_root: join(OFICINA_HOME, 'wt'),
-    repos: [{ slug: 'miracle', path: '/ruta/a/miracle' }],
+    repos: [{ slug: 'u', path: process.env.OFICINA_REPO_U ?? '/ruta/a/U-Windows-App' }],
     max_parallel: 1,
     billing_mode: 'subscription',
     answer_wait_ms: 900000,
@@ -76,10 +78,11 @@ const run: Record<string, () => Promise<void>> = {
   login,
   register,
   status,
+  doctor: async () => { const ok = await doctor(); if (!ok) process.exitCode = 1; },
   start: () => startDaemon({ version: VERSION }),
 };
 if (!cmd || !run[cmd]) {
-  console.log(`oficina-executor ${VERSION}\nuso: oficina-executor <init|login|register|start|status>`);
+  console.log(`oficina-executor ${VERSION}\nuso: oficina-executor <init|login|register|doctor|start|status>`);
   process.exit(cmd ? 64 : 0);
 }
 run[cmd]!().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });

@@ -34,12 +34,14 @@ else
 "
 fi
 
-# Estado de Graphify
-if [ -f "$root/graphify-out/graph.json" ]; then
+# Estado de Graphify (en monorepos el índice vive en la carpeta del proyecto; se mira primero el cwd)
+gdir="$root"
+[ -f "$PWD/graphify-out/graph.json" ] && gdir="$PWD"
+if [ -f "$gdir/graphify-out/graph.json" ]; then
   stamp=""; [ -f "$root/.oficina/graphify.stamp" ] && stamp="$(cat "$root/.oficina/graphify.stamp" 2>/dev/null || true)"
   head="$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo '?')"
   if [ -n "$stamp" ] && [ "$stamp" = "$head" ]; then fresh="fresco (indexado en $stamp)"; else fresh="posiblemente desactualizado (indexado en ${stamp:-?}, HEAD $head); ejecuta 'graphify update .' si lo necesitas"; fi
-  ctx+="Graphify: índice disponible, $fresh. Usa 'graphify query/explain/affected' antes de leer archivos a ciegas.
+  ctx+="Graphify: índice disponible en $gdir/graphify-out, $fresh. Usa 'graphify query/explain/affected' antes de leer archivos a ciegas.
 "
 else
   if command -v graphify >/dev/null 2>&1; then

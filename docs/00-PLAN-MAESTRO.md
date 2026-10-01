@@ -48,7 +48,7 @@ Este documento toma las decisiones que el brief dejó abiertas, las justifica co
 | Supabase | Org "miracle web site clients". Proyectos: `miracle-app` (activo), `medicion-interna` (activo), `level-up-claude` y `linkedin-posts-cms` (inactivos) | MCP Supabase |
 | Vercel | Equipo "Jose David 's projects" con 25 proyectos (`miracle-web`, `miracle-web-testing`, `u-windows-backend`, `capturador-notas-panel`, `graph`, ...) | MCP Vercel |
 
-**Supuestos que quedan** (cada uno tiene su verificación programada en Fase 1 o 2): la correspondencia exacta repo↔producto; qué plan de Claude tiene cada desarrollador y cómo contabiliza hoy `claude -p`; si "Graphify" del equipo es la herramienta de Graphify-Labs o su propio proyecto `Graph`; los comandos reales de prueba/build de cada repo; qué entorno de staging existe por repo.
+**Actualización Fase 1 (misma fecha, segunda sesión):** la correspondencia repo↔producto quedó identificada por inspección del código: `ZevCorp/U-Windows-App` es el monorepo Ü con Ü (Windows/Mac/Android), Miracle Notes (`apps/web`) y Graph (`services/graph`); `joseph1356k/Miracle-AI` es Miracle (notas con voz sobre OpenClaw). "Graphify" es la herramienta de Graphify-Labs (confirmado en su `AGENTS.md`). La oficina se adaptó a las convenciones del monorepo (ADR-011). El proyecto Supabase `oficina-ia` **no se pudo crear**: la organización está en plan free y el usuario tiene 2 proyectos activos (límite); requiere subir a Pro o pausar uno. Siguen como supuestos: el plan de Claude de cada desarrollador y los comandos reales de cada subproyecto (los verifica la misión de inventario).
 
 ---
 

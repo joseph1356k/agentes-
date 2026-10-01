@@ -25,7 +25,7 @@ echo "repo_doc=$([ -f docs/oficina/REPO.md ] && echo yes || echo no)"
 1. **Retomar o crear.** Si `mission_json=yes`, esta es la misión: lee `acceptance`, `decisions`, `notes.md` y continúa donde quedó. Si no, crea la misión:
    - `id`: `m_` + 8 caracteres hex aleatorios (`openssl rand -hex 4`).
    - `title`: cinco a ocho palabras. `goal`: la petición reformulada como comportamiento observable.
-   - `branch`: `mission/<8hex>-<slug>` (slug ascii, guiones, máximo 40 caracteres).
+   - `branch`: `mission/<8hex>-<slug>` (slug ascii, guiones, máximo 40 caracteres). Si el repo documenta la convención `<persona>/<que-hace>` (p. ej. en `.claude/rules/ramas-y-commits.md`), usa `oficina/<slug>` y respeta su voz de commits.
    - `base_sha`: HEAD de la rama por defecto actualizada (`git fetch origin` primero).
    - Escribe `.oficina/mission.json` siguiendo `${CLAUDE_PLUGIN_ROOT}/templates/mission.json` y crea `.oficina/notes.md`. Añade `.oficina/evidence/` y `.oficina/notes.md` a `.git/info/exclude` si no están en `.gitignore` (la evidencia no se commitea; `mission.json` sí).
    - Si el árbol está limpio y no estás ya en una rama `mission/`, crea la rama: `git switch -c <branch> <base_sha>`. Si el árbol está sucio, no cambies de rama: pregunta qué hacer con los cambios.

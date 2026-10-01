@@ -19,6 +19,8 @@ export interface RepoRow {
   production_branch: string;
   commands: Record<string, string>;
   staging: Record<string, unknown>;
+  branch_prefix: string;              // 'mission/' por defecto; 'oficina/' en repos con convención <persona>/<que-hace>
+  subprojects: Array<{ subdir: string; name: string; platform: string | null; commands: Record<string, string>; graphify?: boolean }>;
   graphify_enabled: boolean;
   sensitive_data: boolean;
 }
@@ -28,6 +30,8 @@ export interface MissionRow {
   repo_id: string;
   parent_mission_id: string | null;
   kind: MissionKind;
+  subdir: string | null;              // monorepos: carpeta del proyecto donde corre la sesión
+  required_platform: 'darwin' | 'linux' | 'win32' | null;
   title: string;
   goal: string;
   acceptance: string[];
@@ -117,7 +121,8 @@ export interface VerificationOutcome {
 export interface RunSpec {
   mission: MissionRow;
   repo: RepoRow;
-  worktree: string;
+  worktree: string;                   // raíz del worktree (OFICINA_ROOT)
+  cwd: string;                        // carpeta donde corre la sesión (worktree o worktree/subdir)
   officeKitPath: string;
   model: string;
   fallbackModel?: string;

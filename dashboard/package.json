@@ -1,0 +1,26 @@
+{
+  "name": "@oficina/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dashboard de la oficina de desarrollo con IA: misiones, chat con el tech lead, preguntas, evidencia, aprobaciones, ejecutores y tickets.",
+  "scripts": {
+    "dev": "next dev -p 3200",
+    "build": "next build",
+    "start": "next start -p 3200",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.117.2",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.9.3"
+  }
+}

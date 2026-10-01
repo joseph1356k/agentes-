@@ -6,9 +6,9 @@ import { git, prepareWorkspace, writeMissionJson, branchNameFor, slugify, pushBr
 import type { MissionRow, RepoRow } from './types.js';
 
 let root: string; let remote: string; let clone: string; let wtRoot: string;
-const repo: RepoRow = { id: 'repo_1', slug: 'demo', name: 'Demo', remote_url: '', default_branch: 'main', production_branch: 'main', commands: { test: 'true' }, staging: {}, graphify_enabled: false, sensitive_data: false };
+const repo: RepoRow = { id: 'repo_1', slug: 'demo', name: 'Demo', remote_url: '', default_branch: 'main', production_branch: 'main', commands: { test: 'true' }, staging: {}, branch_prefix: 'mission/', subprojects: [], graphify_enabled: false, sensitive_data: false };
 const mission = (over: Partial<MissionRow> = {}): MissionRow => ({
-  id: 'm_abcd1234', repo_id: 'repo_1', parent_mission_id: null, kind: 'feature', title: 'Recordar corrección por voz: ¡ñandú!', goal: 'g', acceptance: ['a'], decisions: [],
+  id: 'm_abcd1234', repo_id: 'repo_1', parent_mission_id: null, kind: 'feature', subdir: null, required_platform: null, title: 'Recordar corrección por voz: ¡ñandú!', goal: 'g', acceptance: ['a'], decisions: [],
   priority: 50, status: 'claimed', status_reason: null, level: null, risk: null, provider: 'claude', model: null, branch: null, base_sha: null, head_sha: null, pr_url: null,
   executor_id: 'ex_1', preferred_executor_id: null, session_id: null, attempt: 1, max_budget_usd: null, max_turns: null, cost_usd: 0, result: null, created_by: 'dev@x', ...over,
 });
@@ -29,6 +29,7 @@ describe('workspace', () => {
     expect(slugify('Recordar corrección por voz: ¡ñandú!')).toBe('recordar-correccion-por-voz-nandu');
     expect(branchNameFor(mission())).toBe('mission/abcd1234-recordar-correccion-por-voz-nandu');
     expect(branchNameFor(mission({ branch: 'mission/x' }))).toBe('mission/x');
+    expect(branchNameFor(mission(), { branch_prefix: 'oficina/' })).toBe('oficina/recordar-correccion-por-voz-nandu-abcd1234');
   });
   it('crea worktree y rama sin tocar el clone del humano', async () => {
     const ws = await prepareWorkspace(clone, wtRoot, repo, mission());

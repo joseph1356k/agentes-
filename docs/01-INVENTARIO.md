@@ -36,16 +36,25 @@ Todo lo que aparece como **comprobado** se verificó en este entorno o en docume
 - Docs del SDK: "Unless previously approved, Anthropic does not allow third party developers to offer claude.ai login or rate limits for their products, including agents built on the Claude Agent SDK."
 - Conclusión operativa: el ejecutor corre con la cuenta del propio desarrollador, en su máquina; se mide consumo desde el día 1; `billing_mode` explícito; se vuelve a verificar el artículo antes de cada fase y antes de montar un ejecutor dedicado.
 
-## 4. Repositorios accesibles y candidatos (NO confirmados)
+## 4. Repositorios: mapa identificado por inspección del código (1 oct 2026, Fase 1)
 
-Lista obtenida de la cuenta conectada (34 repos). Candidatos por nombre y fecha; **la correspondencia se confirma al registrar cada repo en Fase 1, nunca por parecido de nombre** (brief §5).
+Se clonaron y leyeron `ZevCorp/U-Windows-App` (público) y `joseph1356k/Miracle-AI` (privado, acceso de lectura). La correspondencia sale de sus README/AGENTS.md, no del nombre.
 
-| Producto del brief | Candidatos (repo) | Pistas en nube | Qué confirmar |
+| Producto del brief | Dónde vive | Stack y comandos (de package.json/README; verificar con `oficina-run`) | Reglas que la oficina respeta |
 |---|---|---|---|
-| **Uno** | `ZevCorp/U-Windows-App` (público, push 2026-10-01), `ZevCorp/IU` (2026-04-10), `joseph1356k/carita-U-` (2026-07-01) | Vercel `u-windows-backend` | cuál es el repo principal, si hay app + backend separados, stack, rama de producción |
-| **Miracle** | `joseph1356k/Miracle-AI` (privado, 2026-06-22), `ZevCorp/Miracle-AI` (público, 2026-06-18), `joseph1356k/miracle-el-rosario` (privado, 2026-09-29), `joseph1356k/miracle-his-simulator` (2026-06-08) | Supabase `miracle-app` (activo); Vercel `miracle-web`, `miracle-web-testing`, `miracle-work-hub`, `viewer-feedback-loop` | cuál es el producto vivo, si `miracle-el-rosario` es un despliegue por cliente, qué repo usa `miracle-app` |
-| **Miracle Notes** | sin repo evidente; posible `miracle-el-rosario` o módulo dentro de `Miracle-AI` | Vercel `capturador-notas-panel` (2026-08-21) | si existe repo propio y su relación con Miracle |
-| **Graphify** | `joseph1356k/Graph` (2026-09-26), `ZevCorp/Graph` (privado) | Vercel `graph` | si "Graphify" del equipo es la herramienta de Graphify-Labs (verificada e instalable) o su propio proyecto `Graph`. **No confundir con GraphQL.** |
+| **Uno = Ü** | monorepo `ZevCorp/U-Windows-App` (desde 2026-09-28): `apps/windows` (C# .NET 8 WPF con SAP GUI), `apps/mac` (Swift), `apps/android` (Kotlin, Gradle) | Windows: `dotnet build/test` solo desde Windows (contratos en `tests/ContratoDelGrafo`); Mac solo desde Mac | `required_platform` por misión; ejecutores con `platform` |
+| **Miracle Notes** | mismo monorepo, `apps/web` (Next.js + Supabase, Sentry) | `pnpm dev` (puerto 3100), `pnpm test` (vitest), `pnpm lint`, `pnpm typecheck`, `pnpm build` | misión con `subdir: apps/web` |
+| **Graph (cerebro de Miracle)** | mismo monorepo, `services/graph` (Node + Python; Vercel; `supabase/` propio) | `npm test` (suite de scripts verify-*), `npm run test:privacy`, `test:evals`, `build:vercel`; tiene su propio `CLAUDE.md` con reglas de Graphify | `subdir: services/graph`; `graphify-out/` sin versionar |
+| **Miracle (notas con voz)** | `joseph1356k/Miracle-AI` (Python, uv): notas contextualizadas, chat `/api/chat`, voz con Deepgram, runtime upstream OpenClaw; `orchestration/` es tooling del equipo | `uv sync --extra dev`, `PYTHONPATH=src python -m miracle_agent notes`, `pytest` | repo aparte (`slug: miracle-ai`) |
+| **Graphify** | **confirmado**: `AGENTS.md` del monorepo usa `graphify` (guía en `docs/herramientas/`) y `services/graph/CLAUDE.md` tiene sus reglas. `joseph1356k/Graph` es el repo de origen de Graph (el producto), no la herramienta | — | ADR-009 se mantiene |
+
+Convenciones del monorepo (`AGENTS.md`, `.claude/rules/`): ramas `<persona>/<que-hace>` desde `main` fresco → la oficina usa `oficina/<slug>-<id8>`; `main` solo por PR con squash; commits `tipo(ámbito): lo que el sistema ahora hace` en español y minúscula; portero `git config core.hooksPath .githooks` (bloquea push a `main` y exige compilar/contratos en Windows y Android); trabajar desde la carpeta del proyecto; Graph y el portal se despliegan solos al mergear a `main` (`vercel-desplegar.yml`, con humo y rollback); producción actual `graph-eight-pied`, `itsmiracleai.com.co` hasta el corte (`docs/monorepo/despliegue.md`). Detalle en ADR-011 y `supabase/seed.sql`.
+
+Sin identificar aún: `joseph1356k/miracle-el-rosario` (privado, 2026-09-29; posible despliegue por cliente), `ZevCorp/Miracle-AI` (público, 2026-06-18; posible copia anterior del privado), `ZevCorp/IU`, `carita-U-`, `miracle-his-simulator` (simulador de HIS: útil para pruebas de computer use).
+
+### 4b. Nube: proyecto Supabase de la oficina (bloqueado por plan)
+
+Intento de `create_project('oficina-ia', us-east-1)` el 1 oct 2026: rechazado. Motivo textual: "joseph1356k (2 project limit)… these users will need to either delete, pause or upgrade one or more of these projects". La organización está en plan **free** con 2 proyectos activos (`miracle-app`, `medicion-interna`). Opciones (decisión humana): (a) pasar la organización a Pro (≈ 25 USD/mes) y crear `oficina-ia`; (b) pausar `medicion-interna` u otro proyecto activo. En cuanto exista el proyecto: aplicar `supabase/migrations/0001_oficina.sql` y `supabase/seed.sql`, y poner URL y anon key en el dashboard (Vercel) y en `~/.oficina/config.json` de cada ejecutor.
 
 Repos con acceso de escritura que no parecen productos de este brief (no se tocan): `sistema-interno-de-medici-n`, `App-de-Medici-n`, `Pagina-web-clientes-final`, `presentacion-*`, `articulos-linkedlin`, `landing-descargas`, `oficina-legal-mente`, `meditaci-n`, `UPBpagina-web`, `Hotelsanmarino`, `umo-global-dossier`, `RPOecommerce`, `Conciencia-organizacional`, `emprendehub-colombia`, `skills-antropic` (fork), `medicalautomation`, `you-experimento-loco`, `proyectos-Jero-`, `Presentaciones-hospitales-`, `presentaci-n-capital-semilla-`, `ZevCorp/Android`, `ribuzzco-coder/pagina-web-startco`, `isapantoja1/comercializadora-pantoja`.
 

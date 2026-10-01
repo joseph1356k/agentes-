@@ -21,10 +21,12 @@ export function slugify(s: string, max = 40): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, max).replace(/-+$/g, '') || 'mision';
 }
 
-export function branchNameFor(mission: MissionRow): string {
+/** Rama de la misión según el prefijo del repo: `mission/<id8>-<slug>` o, en repos con convención <persona>/<que-hace>, `oficina/<slug>-<id8>`. */
+export function branchNameFor(mission: MissionRow, repo?: Pick<RepoRow, 'branch_prefix'>): string {
   if (mission.branch) return mission.branch;
   const id8 = mission.id.replace(/^m_/, '').slice(0, 8);
-  return `mission/${id8}-${slugify(mission.title)}`;
+  const prefix = repo?.branch_prefix || 'mission/';
+  return prefix === 'mission/' ? `mission/${id8}-${slugify(mission.title)}` : `${prefix}${slugify(mission.title)}-${id8}`;
 }
 
 export interface PreparedWorkspace {
@@ -39,9 +41,11 @@ export interface PreparedWorkspace {
  * fetch, rama mission/<id>-<slug> desde origin/<default> (o la existente si se retoma), git worktree add.
  */
 export async function prepareWorkspace(repoPath: string, worktreesRoot: string, repo: RepoRow, mission: MissionRow): Promise<PreparedWorkspace> {
-  const branch = branchNameFor(mission);
+  const branch = branchNameFor(mission, repo);
   const worktree = join(worktreesRoot, repo.slug, mission.id);
   await git(repoPath, ['fetch', '--prune', 'origin']);
+  // Portero del repo (p. ej. .githooks/pre-push): se activa en la config compartida del clon, como pide su README.
+  try { await stat(join(repoPath, '.githooks')); await git(repoPath, ['config', 'core.hooksPath', '.githooks'], { allowFail: true }); } catch { /* sin portero */ }
 
   const remoteBranch = await git(repoPath, ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${branch}`], { allowFail: true });
   const localBranch = await git(repoPath, ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], { allowFail: true });
@@ -108,6 +112,8 @@ export async function writeMissionJson(worktree: string, mission: MissionRow, re
     created_by: mission.created_by,
     kind: mission.kind,
     attempt: mission.attempt,
+    subdir: mission.subdir ?? null,
+    branch_prefix: repo.branch_prefix ?? 'mission/',
   };
   await writeFile(join(worktree, '.oficina', 'mission.json'), JSON.stringify(data, null, 2) + '\n');
 }
@@ -133,8 +139,8 @@ export async function commitsSince(worktree: string, baseSha: string): Promise<s
   return r.code === 0 && r.stdout ? r.stdout.split('\n') : [];
 }
 
-/** Actualiza el índice de Graphify si está instalado y el stamp no coincide con HEAD. Nunca falla la misión. */
-export async function graphifyUpdateIfStale(worktree: string, enabled: boolean): Promise<'updated' | 'fresh' | 'skipped'> {
+/** Actualiza el índice de Graphify (en `dir`, que en monorepos es la carpeta del proyecto) si está instalado y el stamp no coincide con HEAD. Nunca falla la misión. */
+export async function graphifyUpdateIfStale(worktree: string, enabled: boolean, dir: string = worktree): Promise<'updated' | 'fresh' | 'skipped'> {
   if (!enabled) return 'skipped';
   const which = await execFileP('bash', ['-lc', 'command -v graphify']).catch(() => null);
   if (!which) return 'skipped';
@@ -143,7 +149,7 @@ export async function graphifyUpdateIfStale(worktree: string, enabled: boolean):
   const stamp = await readFile(stampPath, 'utf8').then(s => s.trim()).catch(() => '');
   if (stamp === head) return 'fresh';
   try {
-    await execFileP('graphify', ['update', '.', '--no-viz'], { cwd: worktree, maxBuffer: 50 * 1024 * 1024, timeout: 10 * 60 * 1000 });
+    await execFileP('graphify', ['update', '.', '--no-viz'], { cwd: dir, maxBuffer: 50 * 1024 * 1024, timeout: 10 * 60 * 1000 });
     await writeFile(stampPath, head + '\n');
     return 'updated';
   } catch {

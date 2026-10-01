@@ -47,7 +47,7 @@ export async function startDaemon(opts: { provider?: Provider; version: string }
   const provider = opts.provider ?? new ClaudeProvider();
   const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`);
 
-  const executorId = await queue.registerExecutor(config.hostname, { billing: config.billing_mode, max_parallel: config.max_parallel, version: opts.version, providers: [provider.name] });
+  const executorId = await queue.registerExecutor(config.hostname, { billing: config.billing_mode, max_parallel: config.max_parallel, version: opts.version, providers: [provider.name], platform: process.platform });
   const repos = await queue.linkRepos(executorId, config.repos);
   log(`ejecutor ${executorId} (${config.hostname}) en línea · repos: ${repos.map(r => r.slug).join(', ') || 'ninguno registrado en la nube'} · facturación declarada: ${config.billing_mode}`);
 

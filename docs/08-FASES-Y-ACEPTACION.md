@@ -8,11 +8,21 @@ Uso inmediato: `claude --plugin-dir <ruta>/office-kit --agent oficina:tech-lead`
 
 ## Fase 1 · Primer recorrido completo (Entrega B) — 1 a 2 semanas
 
-Checklist:
-1. Confirmar el primer repo (candidatos en `01-INVENTARIO.md`); registrar `repos` con `scripts/inventory.sh` + verificación de comandos.
-2. Crear el proyecto Supabase `oficina-ia` (acto facturable, lo hace un humano); aplicar `supabase/migrations/0001_oficina.sql`; crear bucket `evidence`; insertar `team_members`.
-3. Ejecutor: `pnpm build`; `init/login/register/start` en un computador; servicio con `pm2`/`launchd`.
-4. Dashboard v0: tablero, intake, detalle (chat, eventos, preguntas, evidencia, informe), ejecutores, auth. Desplegar en Vercel.
+Estado al 1 de octubre de 2026 (segunda sesión):
+
+| Paso | Estado | Detalle |
+|---|---|---|
+| 1. Repos identificados y registrados | **hecho** (por inspección de código) | monorepo Ü (`u`: Ü Windows/Mac/Android, Miracle Notes en `apps/web`, Graph en `services/graph`) y `miracle-ai`; filas en `supabase/seed.sql` con comandos a verificar; convenciones del monorepo incorporadas (ADR-011) |
+| 2. Proyecto Supabase `oficina-ia` | **bloqueado por plan free** (2 proyectos activos; límite por usuario) | decisión humana: subir la organización a Pro o pausar un proyecto activo; luego aplicar migración + seed (un paso) |
+| 3. Ejecutor | **listo para instalar** | `scripts/install-executor.sh`, `oficina-executor doctor`, `subdir`, `branch_prefix`, `platform`; falta correrlo con `claude login` real |
+| 4. Dashboard v0 | **construido** (`next build` limpio, prueba de humo) · despliegue en Vercel con variables provisionales | tablero, intake, detalle (chat, eventos, preguntas, evidencia, informe, acciones, aprobación por SHA), ejecutores, tickets, ingesta de feedback |
+| 5. Misión real | **pendiente del paso 2 y de un computador con `claude login`** | la primera: `kind: inventory` sobre `u` con `subdir: apps/web` (Miracle Notes) |
+
+Checklist original:
+1. Confirmar el primer repo; registrar `repos` con `scripts/inventory.sh` + verificación de comandos.
+2. Crear el proyecto Supabase `oficina-ia` (acto facturable, lo hace un humano); aplicar `supabase/migrations/0001_oficina.sql` y `supabase/seed.sql`.
+3. Ejecutor: `bash scripts/install-executor.sh <ruta-monorepo>`; `login/register/doctor/start`; servicio con `pm2`/`launchd`.
+4. Dashboard v0 en Vercel con las variables del proyecto.
 5. Misión real: una petición pequeña (N0/N1) sobre el repo.
 
 Aceptación (todas deben cumplirse):

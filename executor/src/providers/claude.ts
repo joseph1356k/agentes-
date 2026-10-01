@@ -77,7 +77,7 @@ export class ClaudeProvider implements Provider {
     };
 
     const options: Options = {
-      cwd: spec.worktree,
+      cwd: spec.cwd,
       model: spec.model,
       ...(spec.fallbackModel ? { fallbackModel: spec.fallbackModel } : {}),
       effort: spec.effort,

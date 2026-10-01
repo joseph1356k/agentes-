@@ -87,6 +87,8 @@ create table if not exists repos (
   commands           jsonb not null default '{}'::jsonb,      -- {install, dev, test, lint, typecheck, build, e2e}
   commands_verified  boolean not null default false,
   staging            jsonb not null default '{"kind":"unknown"}'::jsonb, -- {kind: vercel-preview|vercel-env|supabase-branch|manual|none, ...}
+  branch_prefix      text not null default 'mission/',                 -- p.ej. 'oficina/' en repos con convención <persona>/<que-hace>
+  subprojects        jsonb not null default '[]'::jsonb,               -- monorepos: [{subdir, name, platform, commands, graphify}]
   graphify_enabled   boolean not null default true,
   sensitive_data     boolean not null default false,          -- datos clínicos u otros datos sensibles
   notes              text,
@@ -102,6 +104,7 @@ create table if not exists executors (
   id              text primary key default gen_prefixed_id('ex'),
   owner_email     text not null references team_members(email) on delete cascade,
   hostname        text not null,
+  platform        text,                                        -- darwin | linux | win32 (lo que puede verificar esta máquina)
   status          executor_status not null default 'offline',
   billing         billing_mode not null default 'unknown',
   billing_detail  text,                                        -- lo que reporte accountInfo(), sin secretos
@@ -132,6 +135,8 @@ create table if not exists missions (
   repo_id            text not null references repos(id),
   parent_mission_id  text references missions(id),
   kind               mission_kind not null default 'feature',
+  subdir             text,                                     -- monorepos: carpeta del proyecto (apps/web, services/graph...)
+  required_platform  text check (required_platform in ('darwin','linux','win32')), -- solo ejecutores de esa plataforma
   title              text not null,
   goal               text not null,
   acceptance         jsonb not null default '[]'::jsonb,
@@ -362,6 +367,7 @@ begin
     from missions m
     join executor_repos er on er.repo_id = m.repo_id and er.executor_id = p_executor_id
    where m.status = 'queued'
+     and (m.required_platform is null or m.required_platform = v_exec.platform)
      and (m.preferred_executor_id is null or m.preferred_executor_id = p_executor_id
           or m.updated_at < now() - interval '10 minutes')  -- la preferencia caduca
    order by coalesce(m.preferred_executor_id = p_executor_id, false) desc, m.priority desc, m.created_at asc
@@ -668,6 +674,8 @@ end $$;
 do $$ begin
   if exists (select 1 from pg_extension where extname = 'pg_cron') then
     perform cron.schedule('oficina_mark_orphans', '* * * * *', $cron$ select mark_orphans(); $cron$);
+    -- triage cada 3 horas: solo encola una misión (sin modelo en la nube); la ejecuta un ejecutor encendido
+    perform cron.schedule('oficina_triage', '0 */3 * * *', $cron$ select enqueue_triage_if_needed(slug, 'cron') from repos; $cron$);
   end if;
 exception when others then null; end $$;
 

@@ -40,9 +40,16 @@ if printf '%s' "$c" | grep -Eq ' git [^|;&]*push '; then
 fi
 
 # 3) cambiar de rama / borrar ramas / reescribir historia compartida
-if printf '%s' "$c" | grep -Eq ' git [^|;&]*(checkout|switch) ' && ! printf '%s' "$c" | grep -Eq ' git [^|;&]*(checkout|switch) [^|;&]*(-- |-b |-c |--create |--orphan|mission/)'; then
-  # permitir checkout de archivos (-- ruta) y creación de ramas mission/
-  deny "Cambio de rama bloqueado. Trabaja en la rama de misión${branch:+ ($branch)}; para restaurar archivos usa 'git checkout -- <ruta>' o 'git restore'."
+#    Se permite: restaurar archivos (-- ruta), crear ramas (-b/-c), y moverse a ramas de la oficina
+#    (prefijos mission/ y oficina/, o la rama exacta de la misión).
+if printf '%s' "$c" | grep -Eq ' git [^|;&]*(checkout|switch) '; then
+  allowed=0
+  printf '%s' "$c" | grep -Eq ' git [^|;&]*(checkout|switch) [^|;&]*(-- |-b |-c |--create |--orphan)' && allowed=1
+  printf '%s' "$c" | grep -Eq ' git [^|;&]*(checkout|switch) ([^|;&]* )?(mission|oficina)/' && allowed=1
+  [ -n "$branch" ] && printf '%s' "$c" | grep -Fq " $branch" && allowed=1
+  if [ "$allowed" -eq 0 ]; then
+    deny "Cambio de rama bloqueado. Trabaja en la rama de misión${branch:+ ($branch)}; para restaurar archivos usa 'git checkout -- <ruta>' o 'git restore'."
+  fi
 fi
 if printf '%s' "$c" | grep -Eq ' git [^|;&]*branch [^|;&]*(-D|-d|--delete) '; then
   deny "Borrado de ramas bloqueado."

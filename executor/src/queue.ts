@@ -22,7 +22,7 @@ export class Queue {
   }
 
   // ---- ejecutores -------------------------------------------------------------
-  async registerExecutor(hostname: string, patch: { billing: BillingMode; max_parallel: number; version: string; providers: string[] }): Promise<string> {
+  async registerExecutor(hostname: string, patch: { billing: BillingMode; max_parallel: number; version: string; providers: string[]; platform: string }): Promise<string> {
     const existing = await this.sb.from('executors').select('id').eq('owner_email', this.email).eq('hostname', hostname).maybeSingle();
     if (existing.error) throw new Error(`executors: ${existing.error.message}`);
     if (existing.data?.id) {

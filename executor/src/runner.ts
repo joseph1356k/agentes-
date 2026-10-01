@@ -25,7 +25,7 @@ export function buildInitialPrompt(mission: MissionRow, repo: RepoRow, resumedBr
   else if (mission.kind === 'triage') parts.push('/oficina:triage');
   else parts.push(`/oficina:mission "${mission.title.replace(/"/g, "'")}"`);
   parts.push('');
-  parts.push(`Misión ${mission.id} en el repo ${repo.slug}.`);
+  parts.push(`Misión ${mission.id} en el repo ${repo.slug}${mission.subdir ? ` (proyecto ${mission.subdir}; trabaja desde esta carpeta)` : ''}.`);
   parts.push(`Objetivo: ${mission.goal}`);
   if (mission.acceptance?.length) parts.push(`Criterio de aceptación propuesto por el humano:\n${mission.acceptance.map(a => `- ${a}`).join('\n')}`);
   if (mission.decisions?.length) parts.push(`Decisiones ya tomadas:\n${mission.decisions.map(d => `- ${d.text}`).join('\n')}`);
@@ -73,8 +73,13 @@ export async function runMission(ctx: RunnerContext, claimed: MissionRow): Promi
     mission = await queue.transition(mission.id, 'preparing', null, {});
     const ws = await prepareWorkspace(local.path, config.worktrees_root, repo, mission);
     await writeMissionJson(ws.worktree, mission, repo, ws, config.dashboard_url);
-    const gf = await graphifyUpdateIfStale(ws.worktree, repo.graphify_enabled);
-    await queue.event(mission.id, 'workspace', null, { worktree: ws.worktree, branch: ws.branch, base_sha: ws.baseSha, resumed_branch: ws.resumedBranch, graphify: gf });
+    // Monorepos: la sesión corre desde la carpeta del proyecto para que carguen sus reglas, skills y hooks.
+    const sub = (mission.subdir ?? '').replace(/^\/+|\/+$/g, '');
+    if (sub.includes('..')) throw new Error(`subdir inválido: ${mission.subdir}`);
+    const cwd = sub ? join(ws.worktree, sub) : ws.worktree;
+    const subproject = sub ? repo.subprojects?.find(s => s.subdir.replace(/^\/+|\/+$/g, '') === sub) : undefined;
+    const gf = await graphifyUpdateIfStale(ws.worktree, subproject ? subproject.graphify !== false : repo.graphify_enabled, cwd);
+    await queue.event(mission.id, 'workspace', null, { worktree: ws.worktree, cwd, branch: ws.branch, base_sha: ws.baseSha, resumed_branch: ws.resumedBranch, graphify: gf });
 
     const previousStatus = await queue.lastRequeueFrom(mission.id);
     const sameExecutor = claimed.preferred_executor_id === ctx.executorId;
@@ -89,7 +94,7 @@ export async function runMission(ctx: RunnerContext, claimed: MissionRow): Promi
     const leadPrompt = await readFile(join(config.office_kit_path, 'agents', 'tech-lead.md'), 'utf8').then(s => s.replace(/^---[\s\S]*?---\s*/m, ''));
 
     const spec: RunSpec = {
-      mission, repo, worktree: ws.worktree, officeKitPath: config.office_kit_path,
+      mission, repo, worktree: ws.worktree, cwd, officeKitPath: config.office_kit_path,
       model: mission.model ?? config.models.lead, fallbackModel: config.models.fallback, effort: config.effort,
       maxBudgetUsd: mission.max_budget_usd ?? config.max_budget_usd_default,
       maxTurns: mission.max_turns ?? config.max_turns_default,
