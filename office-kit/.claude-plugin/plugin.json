@@ -1,0 +1,13 @@
+{
+  "name": "oficina",
+  "displayName": "Oficina IA",
+  "version": "0.1.0",
+  "description": "Oficina de desarrollo con IA: tech lead, seis especialidades, protocolo de misión, evidencia verificable y guardas de git.",
+  "author": {
+    "name": "Miracle AI",
+    "email": "dev@itsmiracleai.com"
+  },
+  "repository": "https://github.com/joseph1356k/agentes-",
+  "license": "UNLICENSED",
+  "keywords": ["agents", "tech-lead", "missions", "evidence", "worktrees"]
+}

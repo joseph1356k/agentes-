@@ -1,0 +1,24 @@
+{
+  "name": "@oficina/executor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ejecutor local de la oficina de desarrollo con IA: convierte misiones de la cola (Supabase) en sesiones de Claude Code reanudables con evidencia verificable.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "bin": { "oficina-executor": "./dist/cli.js" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/cli.js start"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.286",
+    "@supabase/supabase-js": "^2.117.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "m_00000000",
+  "title": "Título corto de la misión",
+  "goal": "Comportamiento observable que debe existir al terminar",
+  "acceptance": [],
+  "decisions": [],
+  "repo": {
+    "slug": "repo-slug",
+    "default_branch": "main",
+    "production_branch": "main",
+    "commands": {
+      "install": "",
+      "test": "",
+      "lint": "",
+      "typecheck": "",
+      "build": ""
+    }
+  },
+  "branch": "mission/00000000-slug",
+  "base_sha": "",
+  "level": null,
+  "risk": null,
+  "scope": {},
+  "evidence_dir": ".oficina/evidence",
+  "dashboard_url": null,
+  "created_by": "",
+  "created_at": ""
+}

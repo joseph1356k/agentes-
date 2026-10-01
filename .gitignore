@@ -1,0 +1,20 @@
+# dependencias y builds
+node_modules/
+dist/
+*.tsbuildinfo
+.pnpm-store/
+
+# artefactos de misión que no se versionan
+.oficina/evidence/
+.oficina/notes.md
+.oficina/tickets.json
+.oficina/triage-result.json
+.oficina/graphify.stamp
+graphify-out/
+
+# entorno
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log

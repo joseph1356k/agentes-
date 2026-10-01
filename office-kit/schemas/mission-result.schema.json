@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oficina.itsmiracleai.com/schemas/mission-result.schema.json",
+  "title": "MissionResult",
+  "description": "Informe final de una misión de la oficina. Lo exige el ejecutor como salida estructurada y lo verifica contra .oficina/evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary", "changes", "commits", "tests", "not_tested", "decisions", "learnings", "blockers", "questions", "next_steps", "risk", "delegations"],
+  "properties": {
+    "status": { "type": "string", "enum": ["completed", "partial", "blocked", "failed"] },
+    "summary": { "type": "string", "minLength": 10, "maxLength": 2000 },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "kind", "why"],
+        "properties": {
+          "path": { "type": "string" },
+          "kind": { "type": "string", "enum": ["added", "modified", "deleted", "renamed"] },
+          "why": { "type": "string" }
+        }
+      }
+    },
+    "commits": { "type": "array", "items": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" } },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidence_id", "command", "verdict"],
+        "properties": {
+          "evidence_id": { "type": "string", "pattern": "^ev_[0-9]+_[0-9a-f]+$" },
+          "command": { "type": "string" },
+          "verdict": { "type": "string", "enum": ["pass", "fail"] },
+          "label": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "not_tested": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["what", "why"],
+        "properties": {
+          "what": { "type": "string" },
+          "why": { "type": "string" },
+          "manual_procedure": { "type": "string" }
+        }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "rationale", "scope"],
+        "properties": {
+          "text": { "type": "string" },
+          "rationale": { "type": "string" },
+          "scope": { "type": "string", "enum": ["mission", "shared"] },
+          "adr_path": { "type": "string" }
+        }
+      }
+    },
+    "learnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "evidence"],
+        "properties": {
+          "text": { "type": "string" },
+          "evidence": { "type": "string" },
+          "scope": { "type": "string", "enum": ["repo", "area", "team"] },
+          "stored_in_memory": { "type": "boolean" }
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["what", "needs"],
+        "properties": {
+          "what": { "type": "string" },
+          "needs": { "type": "string", "enum": ["user_decision", "access", "dependency", "other_repo", "quota", "unknown"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "questions": { "type": "array", "items": { "type": "string" } },
+    "next_steps": { "type": "array", "items": { "type": "string" } },
+    "risk": { "type": "string", "enum": ["low", "medium", "high"] },
+    "delegations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["agent", "task", "outcome"],
+        "properties": {
+          "agent": { "type": "string" },
+          "task": { "type": "string" },
+          "outcome": { "type": "string", "enum": ["completed", "partial", "blocked", "failed"] },
+          "handoff_path": { "type": "string" }
+        }
+      }
+    }
+  }
+}
