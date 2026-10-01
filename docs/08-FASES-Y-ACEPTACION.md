@@ -15,7 +15,7 @@ Estado al 1 de octubre de 2026 (segunda sesión):
 | 1. Repos identificados y registrados | **hecho** (por inspección de código) | monorepo Ü (`u`: Ü Windows/Mac/Android, Miracle Notes en `apps/web`, Graph en `services/graph`) y `miracle-ai`; filas en `supabase/seed.sql` con comandos a verificar; convenciones del monorepo incorporadas (ADR-011) |
 | 2. Proyecto Supabase `oficina-ia` | **bloqueado por plan free** (2 proyectos activos; límite por usuario) | decisión humana: subir la organización a Pro o pausar un proyecto activo; luego aplicar migración + seed (un paso) |
 | 3. Ejecutor | **listo para instalar** | `scripts/install-executor.sh`, `oficina-executor doctor`, `subdir`, `branch_prefix`, `platform`; falta correrlo con `claude login` real |
-| 4. Dashboard v0 | **construido** (`next build` limpio, prueba de humo) · despliegue en Vercel con variables provisionales | tablero, intake, detalle (chat, eventos, preguntas, evidencia, informe, acciones, aprobación por SHA), ejecutores, tickets, ingesta de feedback |
+| 4. Dashboard v0 | **construido** (`next build` limpio, prueba de humo: 6 rutas con 200 y la ingesta rechaza sin token) · **despliegue pendiente**: el conector de Vercel respondió 403 "re-authenticate to this scope" al crear el proyecto en el equipo; importar desde la UI de Vercel (2 minutos, `docs/09-ARRANQUE-FASE-1.md`) | tablero, intake, detalle (chat, eventos, preguntas, evidencia, informe, acciones, aprobación por SHA), ejecutores, tickets, ingesta de feedback |
 | 5. Misión real | **pendiente del paso 2 y de un computador con `claude login`** | la primera: `kind: inventory` sobre `u` con `subdir: apps/web` (Miracle Notes) |
 
 Checklist original:

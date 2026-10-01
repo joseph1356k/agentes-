@@ -2,7 +2,7 @@
 
 Una oficina interna de agentes de desarrollo: un **tech lead** que entiende el objetivo, pregunta solo lo necesario, programa y delega en **seis especialidades** (memoria, voz, computer use, backend, frontend, calidad), entrega código en una rama con **evidencia verificable**, y aprende de producción. Construida como una capa ligera sobre Claude Code.
 
-Estado: **Fase 1 en curso (1 oct 2026)** — repos identificados por inspección (monorepo Ü = Ü + Miracle Notes + Graph; Miracle-AI), kit adaptado a sus convenciones, dashboard v0 construido y desplegado, ejecutor instalable. Bloqueo: el proyecto Supabase `oficina-ia` no se puede crear en el plan free actual (ver `docs/01-INVENTARIO.md` §4b). Detalle de avance en `docs/08-FASES-Y-ACEPTACION.md`.
+Estado: **Fase 1 en curso (1 oct 2026)** — repos identificados por inspección (monorepo Ü = Ü + Miracle Notes + Graph; Miracle-AI), kit adaptado a sus convenciones, dashboard v0 construido, ejecutor instalable. Tres pasos quedan en manos del equipo y están descritos en **`docs/09-ARRANQUE-FASE-1.md`**: el proyecto Supabase (bloqueado por el plan free), la importación del dashboard en Vercel (el conector no tiene permiso de escritura) y la primera misión real desde un computador con `claude login`.
 
 ## Empieza por aquí
 
@@ -17,7 +17,7 @@ Estado: **Fase 1 en curso (1 oct 2026)** — repos identificados por inspección
 | `office-kit/` | Plugin de Claude Code: 8 agentes, protocolo de misión (`/oficina:mission`, `handoff`, `evidence`, `review`, `triage`, `inventory`), 6 playbooks, hooks de guarda y evidencia, `oficina-run`, esquema del informe, plantillas | validado (`claude plugin validate --strict`), 56 pruebas de hooks |
 | `supabase/migrations/0001_oficina.sql` | Cola, misiones, eventos, preguntas, evidencia, tickets, alertas, aprobaciones, RPCs (`claim_mission`, `transition_mission`, `approve_mission`, `mark_orphans`...), RLS, vistas de métricas | smoke test en Postgres 16 |
 | `executor/` | Daemon local (TypeScript + Agent SDK + Supabase): claim → worktree → sesión → preguntas → evidencia → push/PR; `doctor` para comprobar la máquina | typecheck + pruebas de lógica; integración con modelo se valida en la primera misión real |
-| `dashboard/` | Next.js 15 + Supabase: tablero en vivo, intake, detalle de misión (chat, preguntas, evidencia, informe, aprobación por SHA), ejecutores, tickets, ingesta de feedback | `next build` limpio; desplegado en Vercel (`oficina-ia`) |
+| `dashboard/` | Next.js 15 + Supabase: tablero en vivo, intake, detalle de misión (chat, preguntas, evidencia, informe, aprobación por SHA), ejecutores, tickets, ingesta de feedback | `next build` limpio + humo; listo para importar en Vercel (el conector no tiene permiso de escritura en el equipo; ver `docs/09-ARRANQUE-FASE-1.md`) |
 | `supabase/seed.sql` | Miembro inicial, repos `u` y `miracle-ai`, bucket de evidencia | pendiente de aplicar (proyecto bloqueado por plan) |
 | `scripts/install-executor.sh` | Instala el ejecutor en un computador del equipo (kit enlazado, build, lanzador, config) | — |
 | `scripts/inventory.sh` | Inventario determinista de un repo (atajo a `office-kit/scripts/inventory.sh`) | probado |
