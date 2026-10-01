@@ -32,6 +32,9 @@ export async function createMission(formData: FormData): Promise<void> {
     priority: Number(formData.get('priority') ?? 50),
     subdir,
     required_platform: requiredPlatform,
+    require_plan_approval: formData.get('require_plan_approval') === 'on',
+    require_review: formData.get('require_review') === 'on',
+    auto_queue_children: formData.get('auto_queue_children') === 'on',
     status: formData.get('queue') === 'on' ? 'queued' : 'draft',
     created_by: email,
   };

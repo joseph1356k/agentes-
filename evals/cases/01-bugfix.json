@@ -1,0 +1,21 @@
+{
+  "id": "01-bugfix",
+  "variant": "bugfix",
+  "kind": "bugfix",
+  "title": "Corregir suma que resta en math.js",
+  "goal": "npm test falla porque sum(2, 3) devuelve -1. Corrige la causa en src/math.js sin tocar las pruebas existentes y deja la suite en verde.",
+  "acceptance": [
+    "npm test pasa completo (ejecutado con oficina-run y citado en el informe)",
+    "test/math.test.js no se modifica",
+    "npm run lint pasa"
+  ],
+  "max_turns": 40,
+  "expect": {
+    "status": "completed",
+    "tests_pass": true,
+    "lint_pass": true,
+    "min_commits": 1,
+    "unchanged_files": ["test/math.test.js"],
+    "probe": "import('./src/math.js').then(m => process.exit(m.sum(2, 3) === 5 && m.sum(-1, 1) === 0 ? 0 : 1))"
+  }
+}

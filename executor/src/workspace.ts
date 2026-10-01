@@ -50,6 +50,12 @@ export async function prepareWorkspace(repoPath: string, worktreesRoot: string, 
   const remoteBranch = await git(repoPath, ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${branch}`], { allowFail: true });
   const localBranch = await git(repoPath, ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], { allowFail: true });
   const resumedBranch = remoteBranch.code === 0 || localBranch.code === 0;
+  // Rama base: la del repo o, en sub-misiones, la rama de la misión padre (remota si ya se empujó; si no, la local del mismo clon).
+  const baseName = mission.base_branch || repo.default_branch;
+  const baseRemote = await git(repoPath, ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${baseName}`], { allowFail: true });
+  const baseLocal = await git(repoPath, ['rev-parse', '--verify', '--quiet', `refs/heads/${baseName}`], { allowFail: true });
+  const baseRef = baseRemote.code === 0 ? `origin/${baseName}` : baseLocal.code === 0 ? baseName : null;
+  if (!baseRef) throw new Error(`la rama base '${baseName}' no existe ni en origin ni en el clon`);
 
   let exists = false;
   try { exists = (await stat(join(worktree, '.git'))).isFile() || (await stat(worktree)).isDirectory(); } catch { exists = false; }
@@ -63,7 +69,7 @@ export async function prepareWorkspace(repoPath: string, worktreesRoot: string, 
     } else if (localBranch.code === 0) {
       await git(repoPath, ['worktree', 'add', worktree, branch]);
     } else {
-      await git(repoPath, ['worktree', 'add', '-b', branch, worktree, `origin/${repo.default_branch}`]);
+      await git(repoPath, ['worktree', 'add', '-b', branch, worktree, baseRef]);
     }
   } else {
     // worktree ya existe (p.ej. reanudación en la misma máquina): asegurar rama y traer cambios remotos
@@ -72,7 +78,7 @@ export async function prepareWorkspace(repoPath: string, worktreesRoot: string, 
     if (remoteBranch.code === 0) await git(worktree, ['pull', '--ff-only', 'origin', branch], { allowFail: true });
   }
 
-  const baseSha = mission.base_sha ?? (await git(repoPath, ['rev-parse', `origin/${repo.default_branch}`])).stdout;
+  const baseSha = mission.base_sha ?? (await git(repoPath, ['rev-parse', baseRef])).stdout;
   await ensureExcludes(worktree);
   await mkdir(join(worktree, '.oficina', 'evidence'), { recursive: true });
   await mkdir(join(worktree, '.oficina', 'handoffs'), { recursive: true });

@@ -30,6 +30,11 @@ export async function loadConfig(): Promise<ExecutorConfig> {
     dashboard_url: raw.dashboard_url,
     create_pr: raw.create_pr ?? true,
     hostname: raw.hostname ?? osHostname(),
+    verify_fix_rounds: raw.verify_fix_rounds ?? 1,
+    review_fix_rounds: raw.review_fix_rounds ?? 1,
+    ci_fix_rounds: raw.ci_fix_rounds ?? 1,
+    ci_wait_ms: raw.ci_wait_ms ?? 30 * 60 * 1000,
+    models_reviewer: raw.models_reviewer ?? 'opus',
   };
   if (!cfg.supabase_url || !cfg.supabase_anon_key) throw new Error('config.json: faltan supabase_url / supabase_anon_key');
   if (!cfg.repos.length) throw new Error('config.json: declara al menos un repo {slug, path}');

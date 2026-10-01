@@ -62,6 +62,33 @@ export class Queue {
     return this.unwrap(await this.sb.rpc('transition_mission', { p_mission_id: missionId, p_to: to, p_reason: reason, p_patch: patch }), `transition_mission(${to})`) as MissionRow;
   }
 
+  async childMissions(parentId: string): Promise<MissionRow[]> {
+    return this.unwrap(await this.sb.from('missions').select('*').eq('parent_mission_id', parentId).order('created_at'), 'missions.children') as MissionRow[];
+  }
+
+  async insertMission(row: Record<string, unknown>): Promise<MissionRow> {
+    return this.unwrap(await this.sb.from('missions').insert(row).select('*').single(), 'missions.insert') as MissionRow;
+  }
+
+  async insertDecision(row: Record<string, unknown>): Promise<string> {
+    return (this.unwrap(await this.sb.from('decisions').insert(row).select('id').single(), 'decisions.insert') as { id: string }).id;
+  }
+
+  async insertLearning(row: Record<string, unknown>): Promise<string> {
+    return (this.unwrap(await this.sb.from('learnings').insert(row).select('id').single(), 'learnings.insert') as { id: string }).id;
+  }
+
+  /** Mensajes nuevos del humano mientras la misión corre (M3). */
+  onUserMessage(missionId: string, cb: (content: string) => void): () => void {
+    const ch = this.sb.channel(`oficina-msgs-${missionId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mission_messages', filter: `mission_id=eq.${missionId}` }, (p) => {
+        const row = p.new as { role?: string; content?: string };
+        if (row.role === 'user' && typeof row.content === 'string') cb(row.content);
+      })
+      .subscribe();
+    return () => { void this.sb.removeChannel(ch); };
+  }
+
   /** Actualiza columnas informativas sin cambiar de estado (session_id, model, billing, head_sha...). */
   async patchMission(missionId: string, patch: Record<string, unknown>): Promise<void> {
     this.unwrap(await this.sb.from('missions').update(patch).eq('id', missionId), 'missions.update');

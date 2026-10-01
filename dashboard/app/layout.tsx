@@ -22,6 +22,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/missions/new">Nueva misión</Link>
             <Link href="/executors">Ejecutores</Link>
             <Link href="/tickets">Tickets</Link>
+            <Link href="/learnings">Aprendizajes</Link>
           </nav>
           <span className="spacer" />
           {email ? (

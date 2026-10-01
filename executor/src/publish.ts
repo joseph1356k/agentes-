@@ -6,7 +6,7 @@ import type { MissionRow, MissionResult, RepoRow } from './types.js';
 const execFileP = promisify(execFile);
 
 /** Crea el PR de la misión una sola vez (idempotente por operations.idempotency_key). Requiere `gh` autenticado. */
-export async function createPrIfMissing(queue: Queue, worktree: string, repo: RepoRow, mission: MissionRow, branch: string, result: MissionResult | null): Promise<string | null> {
+export async function createPrIfMissing(queue: Queue, worktree: string, repo: RepoRow, mission: MissionRow, branch: string, result: MissionResult | null, base: string = repo.default_branch): Promise<string | null> {
   const key = `mission:${mission.id}:pr`;
   const op = await queue.recordOperation(mission.id, 'pr', key, { status: 'pending' });
   if (op.existed && op.url) return op.url;
@@ -23,7 +23,7 @@ export async function createPrIfMissing(queue: Queue, worktree: string, repo: Re
 
   const body = prBody(mission, result);
   try {
-    const { stdout } = await execFileP('gh', ['pr', 'create', '--base', repo.default_branch, '--head', branch, '--title', `${mission.title} (${mission.id})`, '--body', body], { cwd: worktree });
+    const { stdout } = await execFileP('gh', ['pr', 'create', '--base', base, '--head', branch, '--title', `${mission.title} (${mission.id})`, '--body', body], { cwd: worktree });
     const url = stdout.trim().split('\n').pop() ?? '';
     await queue.recordOperation(mission.id, 'pr', key, { status: 'done', url });
     return url || null;

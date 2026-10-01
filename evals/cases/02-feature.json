@@ -1,0 +1,23 @@
+{
+  "id": "02-feature",
+  "variant": "feature",
+  "kind": "feature",
+  "title": "Añadir average con lista vacía rechazada",
+  "goal": "Exportar average(xs) desde src/math.js: devuelve el promedio aritmético de una lista de números y lanza RangeError si la lista está vacía o no es una lista. Con pruebas nuevas en test/.",
+  "acceptance": [
+    "average([2, 4]) devuelve 3 y average([1, 2, 3, 4]) devuelve 2.5",
+    "average([]) y average('x') lanzan RangeError",
+    "hay pruebas nuevas que cubren los casos anteriores y npm test pasa completo",
+    "npm run lint pasa"
+  ],
+  "max_turns": 50,
+  "expect": {
+    "status": "completed",
+    "tests_pass": true,
+    "lint_pass": true,
+    "min_commits": 1,
+    "unchanged_files": ["test/math.test.js"],
+    "new_test_mentions": "average",
+    "probe": "import('./src/math.js').then(m => { if (m.average([2, 4]) !== 3 || m.average([1, 2, 3, 4]) !== 2.5) process.exit(1); for (const bad of [[], 'x']) { try { m.average(bad); process.exit(1); } catch (e) { if (!(e instanceof RangeError)) process.exit(1); } } process.exit(0); })"
+  }
+}

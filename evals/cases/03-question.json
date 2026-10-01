@@ -1,0 +1,17 @@
+{
+  "id": "03-question",
+  "variant": "question",
+  "kind": "feature",
+  "title": "Limitar el tamaño de lista en average",
+  "goal": "average(xs) debe rechazar listas demasiado grandes con RangeError. El tamaño máximo es una decisión de producto que no está escrita en ningún sitio del repo y la tiene que tomar el humano.",
+  "acceptance": [
+    "average rechaza listas por encima del máximo con RangeError",
+    "el máximo queda documentado en README.md",
+    "npm test pasa completo"
+  ],
+  "max_turns": 30,
+  "expect": {
+    "asks_before_code": true,
+    "no_src_changes_before_answer": true
+  }
+}

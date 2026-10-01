@@ -39,7 +39,8 @@ export default async function NewMissionPage() {
         </select>
         <label htmlFor="kind">Tipo</label>
         <select id="kind" name="kind" defaultValue="feature">
-          <option value="feature">feature</option>
+          <option value="feature">feature (cabe en una sesión)</option>
+          <option value="epic">epic (funcionalidad compleja: spec + sub-misiones)</option>
           <option value="bugfix">bugfix</option>
           <option value="inventory">inventory (mapa del repo; primera misión por repo)</option>
           <option value="research">research</option>
@@ -49,6 +50,12 @@ export default async function NewMissionPage() {
         <textarea id="acceptance" name="acceptance" placeholder={'La corrección queda persistida con procedencia\nEn una sesión posterior la acción usa el campo corregido'} />
         <label htmlFor="priority">Prioridad (0–100)</label>
         <input id="priority" name="priority" type="number" min={0} max={100} defaultValue={50} />
+        <fieldset className="controls">
+          <legend>Controles</legend>
+          <label><input type="checkbox" name="require_plan_approval" /> Aprobar el plan antes de que toque código (el tech lead pregunta y espera)</label>
+          <label><input type="checkbox" name="require_review" /> Revisión independiente obligatoria (si no, solo con riesgo medio/alto o N3)</label>
+          <label><input type="checkbox" name="auto_queue_children" defaultChecked /> Las sub-misiones que cree el tech lead nacen en cola (si no, en borrador para que las revises)</label>
+        </fieldset>
         <label><input type="checkbox" name="queue" defaultChecked /> Encolar ya (si no, queda en borrador)</label>
         <div className="actions"><button className="btn primary" type="submit" disabled={!SUPABASE_CONFIGURED || repos.length === 0}>Crear misión</button></div>
       </form>

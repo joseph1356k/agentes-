@@ -25,6 +25,9 @@ Cómo están definidos los perfiles, por qué así, y cómo se encarga y devuelv
 | `revisor` | `model: opus`, `tools: Read, Glob, Grep, Bash`, `disallowedTools: Edit, Write, NotebookEdit`, hook `readonly-guard` | corrección, seguridad, compatibilidad, pruebas no debilitadas, claridad | `## Veredicto` + hallazgos con severidad y `archivo:línea` |
 
 Notas:
+- Todos los agentes que escriben código precargan `oficina:protocolo` y `oficina:estandar` (promesa antes que código, cambios pequeños, seguridad, evidencia); los especialistas además su `playbook-<área>`. El texto íntegro de cada prompt está en `docs/11-SYSTEM-PROMPTS.md`.
+- El tech lead, cuando corre bajo el ejecutor, tiene las herramientas de la oficina (`mcp__oficina__*`) para registrar plan, criterio, decisiones y aprendizajes, crear sub-misiones (`/oficina:spec`), pedir revisión y pedir atención sin bloquear. Sigue las recetas por tipo de tarea (`/oficina:recipe-*`).
+- El `revisor` también corre como sesión automática del ejecutor (M9) para riesgo ≥ medio, N3 o `require_review`, con el mismo prompt y herramientas de solo lectura.
 - `AskUserQuestion` no existe dentro de subagentes (limitación verificada). Por eso los especialistas devuelven preguntas en `## Bloqueos` y el lead decide si preguntar al humano.
 - `revisor` no es un octavo perfil: es el perfil de calidad con modelo fuerte, contexto limpio y solo lectura, como pide el brief ("una nueva sesión o subagente basta").
 - Los límites `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=3` y `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=2` los fija el ejecutor por misión.

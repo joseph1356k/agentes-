@@ -147,13 +147,17 @@ executor/
   src/queue.ts          cliente Supabase: claim, heartbeat, eventos, preguntas, evidencia
   src/workspace.ts      worktrees, ramas, mission.json, push
   src/evidence.ts       verificación cruzada tests[] ⇄ .oficina/evidence
-  src/providers/claude.ts  Agent SDK: query, canUseTool, hooks (defer), resume, interrupt, accountInfo
-  src/runner.ts         ciclo de vida de una misión (prepare → run → verify → publish)
+  src/verify.ts         M7: comprobaciones independientes (test/lint/typecheck) con evidencia propia
+  src/review.ts         M9: sesión del revisor (solo lectura), parseo del veredicto, ronda de corrección
+  src/ci.ts             M6: `gh pr checks`, espera del CI, logs de los jobs fallidos
+  src/office-tools.ts   M5: servidor MCP en proceso `oficina` (mission_get, plan_set, acceptance_set, decision_record, learning_record, child_mission_create, review_request, attention)
+  src/providers/claude.ts  Agent SDK: query con entrada por streaming (chat en vivo), canUseTool, hooks (defer), resume, interrupt, accountInfo
+  src/runner.ts         ciclo de vida de una misión (prepare → setup → run → verify → review → publish → ci)
   src/daemon.ts         bucle principal, capacidad, cuota, señales
-  src/cli.ts            `oficina-executor login|register|start|status`
+  src/cli.ts            `oficina-executor init|login|register|doctor|start|status`
 ```
 
-Configuración por máquina en `~/.oficina/config.json`: `supabase_url`, `office_kit_path`, `repos: [{slug, path}]`, `max_parallel: 1`, `billing_mode`, `answer_wait_ms: 900000`, `max_budget_usd_default`, `max_turns_default`, `models: {lead, specialist, reviewer, triage}`.
+Configuración por máquina en `~/.oficina/config.json`: `supabase_url`, `office_kit_path`, `repos: [{slug, path}]`, `max_parallel: 1`, `billing_mode`, `answer_wait_ms: 900000`, `max_budget_usd_default`, `max_turns_default`, `models: {lead, fallback}`, `models_reviewer`, `verify_fix_rounds`, `review_fix_rounds`, `ci_fix_rounds`, `ci_wait_ms`.
 
 ## 7. Dashboard: estructura
 
@@ -161,10 +165,11 @@ Configuración por máquina en `~/.oficina/config.json`: `supabase_url`, `office
 dashboard/ (Next.js 15, App Router, TypeScript, Tailwind, shadcn/ui, @supabase/ssr)
   app/(auth)/login
   app/page.tsx                         tablero por estado (Realtime)
-  app/missions/new/page.tsx            intake (título, objetivo, repo, criterio, prioridad)
-  app/missions/[id]/page.tsx           chat + eventos + preguntas + evidencia + resultado + acciones
+  app/missions/new/page.tsx            intake (título, objetivo, repo/subproyecto, plataforma, tipo incl. epic, criterio, prioridad, controles: aprobar plan, revisión obligatoria, sub-misiones en cola)
+  app/missions/[id]/page.tsx           chat + preguntas (incl. aprobación del plan) + plan/spec + sub-misiones + verificación independiente/revisión/CI + evidencia + informe + aprendizajes + acciones
   app/executors/page.tsx               estado, capacidad, facturación, repos
   app/tickets/page.tsx                 producción
+  app/learnings/page.tsx               aprendizajes verificados por repo/área
   app/usage/page.tsx                   consumo
   app/api/ingest/feedback/route.ts     POST → tickets (dedupe, saneado)
   app/api/ingest/vercel-logs/route.ts  log drain → agregados + alertas

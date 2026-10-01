@@ -34,7 +34,12 @@ Programa local, no un modelo. Recibe misiones, prepara el espacio de trabajo, in
   "max_concurrent_subagents": 3,
   "max_subagent_depth": 2,
   "dashboard_url": "https://oficina-ia.vercel.app",
-  "create_pr": true
+  "create_pr": true,
+  "verify_fix_rounds": 1,
+  "review_fix_rounds": 1,
+  "ci_fix_rounds": 1,
+  "ci_wait_ms": 1800000,
+  "models_reviewer": "opus"
 }
 ```
 
@@ -43,16 +48,19 @@ Credenciales de la cola en `~/.oficina/credentials.json` (JWT de Supabase del de
 ## 3. Ciclo de vida de una misión (`src/runner.ts`)
 
 1. `transition → preparing`; `prepareWorkspace()` (`src/workspace.ts`): `git fetch`, rama `mission/<id8>-<slug>` desde `origin/<default>` o la existente si se retoma, `git worktree add` bajo `worktrees_root/<repo>/<id>`, `info/exclude` para `.oficina/evidence/`, `graphify-out/`, etc.
-2. `writeMissionJson()`; `graphifyUpdateIfStale()` (`graphify update . --no-viz` si el stamp ≠ HEAD; nunca falla la misión).
-3. Decide entrada: **nueva** (`/oficina:mission "<título>"` + objetivo + criterio + decisiones) o **reanudación** (`resume: session_id` con un prompt de continuación) cuando la misión viene de `waiting_answer`, `paused`, `paused_quota`, `changes_requested`, `blocked` o `failed` y el ejecutor es el mismo (la sesión vive en su disco). Si es otro ejecutor, sesión nueva con instrucción de retomar desde la rama y `.oficina/notes.md`.
-4. `transition → running`; latido cada 30 s con push de la rama si hay commits nuevos (y actualización de `head_sha`).
-5. Consume los eventos del proveedor y persiste: texto del lead → `mission_messages`; herramientas, subagentes, preguntas, reintentos, resultado → `mission_events`.
-6. Al `result`: registra uso y costo; decide estado final:
+2. `writeMissionJson()`; `graphifyUpdateIfStale()` (`graphify update . --no-viz` si el stamp ≠ HEAD; nunca falla la misión). **Setup (M2)**: si el repo o el subproyecto declaran `commands.setup`, se ejecuta con evidencia `ev_…` antes de la sesión; si falla, la misión queda `blocked` con el log.
+3. Decide entrada: **nueva** (`/oficina:mission "<título>"`, `/oficina:spec` para `kind: epic`, `/oficina:inventory`, `/oficina:triage` + objetivo + criterio + decisiones + gate de plan si aplica) o **reanudación** (`resume: session_id` con un prompt de continuación) cuando la misión viene de `waiting_answer`, `paused`, `paused_quota`, `changes_requested`, `blocked` o `failed` y el ejecutor es el mismo (la sesión vive en su disco). Si es otro ejecutor, sesión nueva con instrucción de retomar desde la rama y `.oficina/notes.md`.
+4. `transition → running`; latido cada 30 s con push de la rama si hay commits nuevos (y actualización de `head_sha`). La sesión recibe el servidor MCP `oficina` (M5): el agente registra plan, criterio, decisiones y aprendizajes, crea sub-misiones (que nacen con `base_branch` = rama del padre y `parent_mission_id`), pide revisión o atención; el ejecutor persiste todo en Supabase y el agente nunca ve credenciales.
+5. Consume los eventos del proveedor y persiste: texto del lead → `mission_messages`; herramientas, subagentes, preguntas, reintentos, resultado → `mission_events`. **Chat en vivo (M3)**: los mensajes del humano insertados en `mission_messages` mientras la misión corre se inyectan en la conversación como turno de usuario.
+6. Tras la sesión, **verificación independiente (M7)**: corre `test`, `lint`, `typecheck` (o `build`) del repo/subproyecto con `oficina-run`; si falla, reanuda la sesión con los logs (`verify_fix_rounds`) y repite. Luego **revisión automática (M9)** si riesgo ≥ medio, N3 o `require_review`: sesión aparte con el revisor (solo lectura, contexto limpio); hallazgos bloqueantes/altos → ronda de corrección (`review_fix_rounds`). Resultados en `missions.executor_checks` y `missions.review`.
+6b. Al `result`: registra uso y costo; decide estado final:
    - `deferred_tool_use.name == AskUserQuestion` → `waiting_answer`.
    - cuota (`rate_limit`/`billing_error` con ≥3 reintentos) → `paused_quota` y ejecutor `quota_exhausted`.
    - error/`subtype ≠ success` → `failed` (1er intento) o `blocked` (2º).
    - informe estructurado → `verifyResult()` cruza `tests[]` con `.oficina/evidence/ev_*.json` → `review` (verificado o con flag `unverified`) o `blocked`.
-7. Push final, subida de evidencia a Storage (`evidence/<mission>/`), PR idempotente (`operations` clave `mission:<id>:pr`), `transition` final con `head_sha`, `session_id`, `cost_usd`, `result`, `pr_url`.
+7. Push final, subida de evidencia a Storage (`evidence/<mission>/`), PR idempotente (`operations` clave `mission:<id>:pr`) contra `base_branch` (la rama del padre en sub-misiones), `transition` final con `head_sha`, `session_id`, `cost_usd`, `result`, `pr_url`.
+8. **CI del PR (M6)**: consulta `gh pr checks` hasta `ci_wait_ms`; si falla, reanuda la sesión con los logs de los jobs rojos (`ci_fix_rounds`), empuja y vuelve a esperar. Estado en `missions.ci`.
+9. Sub-misiones: cuando la última hija llega a `review` o más allá, un trigger reencola a la misión padre bloqueada "esperando sub-misiones" (con preferencia por su ejecutor) para que integre, corra la suite completa y verifique la spec.
 
 ## 4. Sesión con el Agent SDK (`src/providers/claude.ts`)
 

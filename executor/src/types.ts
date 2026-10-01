@@ -5,7 +5,7 @@ export type MissionStatus =
   | 'blocked' | 'review' | 'changes_requested' | 'staging' | 'approved' | 'released' | 'verified' | 'regressed'
   | 'orphaned' | 'failed' | 'cancelled';
 
-export type MissionKind = 'feature' | 'bugfix' | 'inventory' | 'triage' | 'verify' | 'research';
+export type MissionKind = 'feature' | 'bugfix' | 'inventory' | 'triage' | 'verify' | 'research' | 'epic';
 export type BillingMode = 'subscription' | 'api_key' | 'unknown';
 export type ExecutorStatus = 'offline' | 'online' | 'busy' | 'quota_exhausted' | 'error';
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'unknown';
@@ -32,6 +32,16 @@ export interface MissionRow {
   kind: MissionKind;
   subdir: string | null;              // monorepos: carpeta del proyecto donde corre la sesión
   required_platform: 'darwin' | 'linux' | 'win32' | null;
+  base_branch: string | null;         // rama base (hijas: la rama del padre)
+  depends_on: string[];
+  plan: string | null;
+  spec_path: string | null;
+  require_plan_approval: boolean;
+  require_review: boolean;
+  auto_queue_children: boolean;
+  executor_checks: ExecutorChecks | null;
+  review: ReviewOutcome | null;
+  ci: CiOutcome | null;
   title: string;
   goal: string;
   acceptance: string[];
@@ -78,7 +88,18 @@ export interface ExecutorConfig {
   dashboard_url?: string;
   create_pr: boolean;                 // requiere gh autenticado
   hostname: string;
+  verify_fix_rounds: number;          // M7: rondas de corrección si la verificación independiente falla (1)
+  review_fix_rounds: number;          // M9: rondas de corrección tras hallazgos bloqueantes del revisor (1)
+  ci_fix_rounds: number;              // M6: rondas de corrección si CI del PR falla (1)
+  ci_wait_ms: number;                 // M6: tiempo máximo esperando CI (30 min)
+  models_reviewer: string;            // modelo del revisor automático (opus)
 }
+
+// ---- Verificación independiente, revisión y CI -----------------------------------
+export interface CheckResult { name: string; command: string; evidence_id: string; exit_code: number; duration_ms: number; tail: string }
+export interface ExecutorChecks { ok: boolean; ran_at: string; cwd: string; checks: CheckResult[]; round: number; skipped_reason?: string }
+export interface ReviewOutcome { verdict: 'aprobar' | 'cambios_requeridos' | 'no_revisable'; blocking: number; high: number; summary: string; path: string; round: number; cost_usd: number; session_id: string | null }
+export interface CiOutcome { pr_url: string; state: 'pending' | 'success' | 'failure' | 'timeout' | 'unknown'; checks: Array<{ name: string; state: string; link?: string }>; rounds: number; checked_at: string }
 
 // ---- Informe final (mission-result.schema.json) ------------------------------
 export interface MissionResult {
@@ -133,6 +154,9 @@ export interface RunSpec {
   resultSchema: Record<string, unknown>;
   leadSystemPrompt: string;
   answerWaitMs: number;
+  tools?: OfficeToolsBackend;         // M5: si se da, se expone el servidor MCP `oficina`
+  readOnly?: boolean;                 // M9: sesión de revisión (sin edición)
+  systemPromptOverride?: string;      // M9: prompt del revisor en lugar del tech lead
 }
 
 export type RunInput =
@@ -158,6 +182,22 @@ export type RunEvent =
 export interface RunHandle {
   interrupt(): Promise<void>;
   abort(): void;
+  /** M3: inyecta un mensaje del humano en la conversación en curso (se procesa al terminar el turno actual). */
+  send(text: string): void;
+  /** Cierra la entrada: la sesión termina cuando acabe el turno en curso. */
+  finish(): void;
+}
+
+/** Herramientas de la oficina expuestas al agente (M5). El ejecutor las implementa contra Supabase. */
+export interface OfficeToolsBackend {
+  missionGet(): Promise<Record<string, unknown>>;
+  planSet(plan: string, patch: { acceptance?: string[]; level?: string; risk?: string }): Promise<void>;
+  acceptanceSet(acceptance: string[]): Promise<void>;
+  decisionRecord(d: { text: string; rationale: string; scope: 'mission' | 'shared'; adr_path?: string }): Promise<string>;
+  learningRecord(l: { text: string; evidence: string; scope: 'repo' | 'area' | 'team'; area?: string }): Promise<string>;
+  childMissionCreate(c: { title: string; goal: string; acceptance?: string[]; subdir?: string; depends_on?: string[]; priority?: number; required_platform?: 'darwin' | 'linux' | 'win32' }): Promise<{ id: string; status: string }>;
+  reviewRequest(reason: string): Promise<void>;
+  attention(text: string): Promise<void>;
 }
 
 export interface QuestionBridge {

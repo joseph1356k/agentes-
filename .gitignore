@@ -18,3 +18,4 @@ graphify-out/
 !.env.example
 .DS_Store
 *.log
+evals/results/

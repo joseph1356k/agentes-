@@ -13,10 +13,11 @@ Interfaz mínima para entender qué pasa y decidir: misiones, chat con el tech l
 | Ruta | Qué muestra | Acciones (→ RPC) |
 |---|---|---|
 | `/` | tablero por estado (`queued`, `running`, `waiting_answer`, `review`, `blocked`, ...) con repo, ejecutor, edad, costo | crear misión, priorizar (`priority`), pausar/cancelar (`transition_mission`) |
-| `/missions/new` | intake: título, objetivo, repo, criterio de aceptación (opcional), prioridad, tipo | insert en `missions` con `status: draft`/`queued` |
-| `/missions/[id]` | **chat** (`mission_messages`: humano ⇄ tech lead), línea de tiempo (`mission_events`: herramientas, subagentes, commits, reintentos), **preguntas** (`questions` abiertas con sus opciones), evidencia (`evidence` + logs desde Storage), informe (`result` con `tests`, `not_tested`, `decisions`, `blockers`), diff/PR, estado y motivo | responder pregunta (update `questions`), enviar mensaje (insert `mission_messages`), pedir cambios (`changes_requested`), pedir revisión, aprobar SHA (`approve_mission`), marcar released/verified/regressed |
+| `/missions/new` | intake: título, objetivo, repo y subproyecto, plataforma requerida, tipo (`feature`, `epic`, `bugfix`, `inventory`, `research`, `verify`), criterio de aceptación (opcional), prioridad, controles (`require_plan_approval`, `require_review`, `auto_queue_children`) | insert en `missions` con `status: draft`/`queued` |
+| `/missions/[id]` | **chat** (`mission_messages`: humano ⇄ tech lead, en vivo si está `running`), línea de tiempo (`mission_events`), **preguntas** (`questions` abiertas; banner si es la aprobación del plan), **plan/spec** (`plan`, `spec_path`), **sub-misiones** (hijas con estado, dependencias y PR; enlace al padre), **verificación de la oficina** (`executor_checks`, `review`, `ci` con banners cuando fallan), evidencia, informe (`result`), aprendizajes de la misión, estado y motivo | responder pregunta, enviar mensaje, pedir cambios, aprobar SHA (`approve_mission`), marcar released/verified/regressed, pausar, cancelar, prioridad |
 | `/executors` | `executor_capacity`: estado, latido, facturación (suscripción/API key), capacidad, repos | editar `max_parallel` (dueño) |
 | `/tickets` | `tickets_sanitized` por severidad/estado, duplicados agrupados, alertas | crear misión desde ticket (`draft`), ignorar, vincular |
+| `/learnings` | `learnings`: aprendizajes verificados por repo y ámbito, con evidencia y misión de origen | — |
 | `/usage` | `usage_ledger` por misión/ejecutor/modelo; costo estimado vs real según facturación | — |
 | `/repos` | `repos`: comandos verificados, staging, flags | editar |
 
@@ -42,4 +43,4 @@ Las alertas críticas notifican por webhook configurable (`ALERT_WEBHOOK_URL`: S
 
 ## 6. Alcance v0 (Fase 1) vs después
 
-v0: tablero, intake, detalle con chat/eventos/preguntas/evidencia/informe, ejecutores, auth. Después: tickets y alertas (Fase 4), usage con datos fiables, repos editables, oficina animada, notificaciones push.
+Hecho: tablero, intake con controles, detalle con chat/eventos/preguntas/plan/sub-misiones/verificación/revisión/CI/evidencia/informe/aprendizajes, ejecutores, tickets, aprendizajes, ingesta de feedback, auth. Después: usage con datos fiables, repos editables, oficina animada, notificaciones push, log drains.

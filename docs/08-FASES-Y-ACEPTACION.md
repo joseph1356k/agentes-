@@ -18,6 +18,8 @@ Estado al 1 de octubre de 2026 (segunda sesión):
 | 4. Dashboard v0 | **construido** (`next build` limpio, prueba de humo: 6 rutas con 200 y la ingesta rechaza sin token) · **despliegue pendiente**: el conector de Vercel respondió 403 "re-authenticate to this scope" al crear el proyecto en el equipo; importar desde la UI de Vercel (2 minutos, `docs/09-ARRANQUE-FASE-1.md`) | tablero, intake, detalle (chat, eventos, preguntas, evidencia, informe, acciones, aprobación por SHA), ejecutores, tickets, ingesta de feedback |
 | 5. Misión real | **pendiente del paso 2 y de un computador con `claude login`** | la primera: `kind: inventory` sobre `u` con `subdir: apps/web` (Miracle Notes) |
 
+Iteración 2 (misma fecha, **hecha**; detalle en `docs/10-COMPARATIVA-Y-MEJORAS.md`): plan explícito con gate opcional (M1), setup por repo (M2), chat en vivo (M3), recetas por tipo de tarea (M4), herramientas MCP de la oficina (M5), CI del PR (M6), verificación independiente (M7), evals estáticas y dinámicas (M8), revisión automática (M9), spec + sub-misiones con dependencias y reencolado del padre, system prompts completos de los 8 agentes (`docs/11-SYSTEM-PROMPTS.md`), dashboard con plan/sub-misiones/verificación/revisión/CI/aprendizajes. Verificado: plugin válido, 56 pruebas de hooks, 23 pruebas del ejecutor, smoke SQL, build del dashboard con humo en 7 rutas, 71 comprobaciones estáticas (`evals/static.sh --full`), 6 pruebas del calificador. Pendiente de validar con modelo real: las 3 evals dinámicas (`evals/run.mjs`), que requieren `claude login`.
+
 Checklist original:
 1. Confirmar el primer repo; registrar `repos` con `scripts/inventory.sh` + verificación de comandos.
 2. Crear el proyecto Supabase `oficina-ia` (acto facturable, lo hace un humano); aplicar `supabase/migrations/0001_oficina.sql` y `supabase/seed.sql`.
@@ -73,6 +75,10 @@ Ejecutor dedicado (mini PC/VM con cuenta propia o `api_key` explícita), adaptad
 | Coexistencia con trabajo humano | tener cambios sin commit en el checkout humano durante una misión | intactos; la misión trabajó en `~/.oficina/wt/...` |
 | Dos intentos | misión imposible a propósito (prueba que siempre falla) | `failed` en el 1º, `blocked` en el 2º, con evidencia de ambos |
 | Evidencia falsa | informe con `evidence_id` inexistente (prueba manual del verificador) | `result_verified = false`, `unverified_tests` listado, misión en `review` con advertencia, nunca `completed` |
+| Informe optimista | el informe dice "pasa" pero `npm test` del repo falla | la verificación independiente (M7) lo detecta: `executor_checks.ok = false`, ronda de corrección y, si persiste, `review` con banner rojo |
+| Pregunta antes de inventar | misión con una decisión de producto no escrita (eval `03-question`) | el tech lead pregunta con `AskUserQuestion` sin tocar código; la misión pasa a `waiting_answer` y reanuda con la respuesta |
+| Funcionalidad compleja | misión `epic` que cruza tres áreas | spec en `docs/specs/`, sub-misiones con `depends_on`, el ejecutor las atiende en orden; al llegar todas a `review`, el padre vuelve a la cola para integrar |
+| Evals dinámicas | `node evals/run.mjs` con los modelos por defecto | 3/3 casos pasan la calificación independiente |
 
 ## Métricas (vista `mission_metrics` + consultas)
 

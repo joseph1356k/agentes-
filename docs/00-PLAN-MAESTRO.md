@@ -17,6 +17,8 @@ Este documento toma las decisiones que el brief dejó abiertas, las justifica co
 
 **Qué sigue.** Fase 1 (1–2 semanas): crear el proyecto Supabase, terminar ejecutor y dashboard mínimos y cerrar el primer recorrido completo sobre un repo real.
 
+**Iteración 2 (mismo día).** Comparé la oficina con los agentes de programación que ya operan a escala (Claude Code, Codex, Devin, Copilot coding agent, Cursor, Aider, OpenHands; `docs/10-COMPARATIVA-Y-MEJORAS.md`) y cerré lo que explica su utilidad real: plan explícito con aprobación opcional, setup reproducible por repo, chat en vivo durante la misión, recetas por tipo de tarea, herramientas de la oficina para el agente (plan, decisiones, aprendizajes, sub-misiones, revisión, atención), vigilancia del CI del PR, verificación independiente del ejecutor, revisión automática con contexto limpio, evals, y **funcionalidades complejas** mediante spec + sub-misiones con dependencias (`/oficina:spec`, tipo `epic`). Todos los agentes tienen su system prompt completo (`docs/11-SYSTEM-PROMPTS.md`). Todo compila, pasa sus pruebas y las 71 comprobaciones de consistencia (`evals/static.sh --full`); lo único que no se pudo ejecutar aquí es una misión con modelo real, que exige `claude login` en un computador del equipo.
+
 ---
 
 ## 1. Qué entendí del brief

@@ -21,8 +21,17 @@ export const BOARD_COLUMNS: Array<{ title: string; statuses: MissionStatus[] }> 
 
 export interface Repo { id: string; slug: string; name: string; default_branch: string; branch_prefix: string; subprojects: Array<{ subdir: string; name: string; platform: string | null }>; sensitive_data: boolean }
 
+export interface CheckResult { name: string; command: string; evidence_id: string; exit_code: number; duration_ms: number; tail: string }
+export interface ExecutorChecks { ok: boolean; ran_at: string; cwd: string; checks: CheckResult[]; round: number; skipped_reason?: string }
+export interface ReviewOutcome { verdict: 'aprobar' | 'cambios_requeridos' | 'no_revisable'; blocking: number; high: number; summary: string; path: string; round: number; cost_usd: number }
+export interface CiOutcome { pr_url: string; state: 'pending' | 'success' | 'failure' | 'timeout' | 'unknown'; checks: Array<{ name: string; state: string; link?: string }>; rounds: number; checked_at: string }
+export interface Learning { id: string; mission_id: string | null; repo_id: string | null; scope: 'repo' | 'area' | 'team'; area: string | null; text: string; evidence: string; recorded_by: string | null; created_at: string }
+
 export interface Mission {
   id: string; repo_id: string; kind: string; subdir: string | null; required_platform: string | null;
+  parent_mission_id: string | null; base_branch: string | null; depends_on: string[];
+  plan: string | null; spec_path: string | null; require_plan_approval: boolean; require_review: boolean; auto_queue_children: boolean;
+  executor_checks: ExecutorChecks | null; review: ReviewOutcome | null; ci: CiOutcome | null;
   title: string; goal: string; acceptance: string[]; decisions: Array<{ text: string; by?: string }>;
   priority: number; status: MissionStatus; status_reason: string | null; level: string | null; risk: string | null;
   provider: string; model: string | null; billing: string | null; branch: string | null; base_sha: string | null; head_sha: string | null; pr_url: string | null;

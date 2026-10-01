@@ -20,7 +20,7 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type mission_kind as enum ('feature','bugfix','inventory','triage','verify','research');
+  create type mission_kind as enum ('feature','bugfix','inventory','triage','verify','research','epic');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
@@ -137,6 +137,16 @@ create table if not exists missions (
   kind               mission_kind not null default 'feature',
   subdir             text,                                     -- monorepos: carpeta del proyecto (apps/web, services/graph...)
   required_platform  text check (required_platform in ('darwin','linux','win32')), -- solo ejecutores de esa plataforma
+  base_branch        text,                                     -- rama base (null = default_branch del repo; las hijas usan la rama del padre)
+  depends_on         text[] not null default '{}',             -- misiones que deben estar en review o más allá antes de reclamar esta
+  plan               text,                                     -- plan del tech lead (M1)
+  spec_path          text,                                     -- docs/specs/<slug>.md en funcionalidades complejas
+  require_plan_approval boolean not null default false,        -- gate humano sobre el plan antes de implementar
+  require_review     boolean not null default false,           -- fuerza la revisión automática independiente (M9)
+  auto_queue_children boolean not null default true,           -- las sub-misiones creadas por el lead nacen en cola (si no, en borrador)
+  executor_checks    jsonb,                                    -- verificación independiente del ejecutor (M7)
+  review             jsonb,                                    -- veredicto del revisor automático (M9)
+  ci                 jsonb,                                    -- estado de CI del PR (M6)
   title              text not null,
   goal               text not null,
   acceptance         jsonb not null default '[]'::jsonb,
@@ -244,6 +254,20 @@ create table if not exists decisions (
   updated_at  timestamptz not null default now()
 );
 create trigger decisions_updated_at before update on decisions for each row execute function set_updated_at();
+
+-- Aprendizajes verificados (con evidencia y procedencia) que los agentes registran vía la herramienta oficina.learning_record
+create table if not exists learnings (
+  id          text primary key default gen_prefixed_id('lr'),
+  mission_id  text references missions(id) on delete set null,
+  repo_id     text references repos(id),
+  scope       text not null default 'repo' check (scope in ('repo','area','team')),
+  area        text,
+  text        text not null,
+  evidence    text not null,
+  recorded_by text,
+  created_at  timestamptz not null default now()
+);
+create index if not exists learnings_repo_idx on learnings(repo_id, created_at desc);
 
 create table if not exists approvals (
   id           text primary key default gen_prefixed_id('ap'),
@@ -368,6 +392,11 @@ begin
     join executor_repos er on er.repo_id = m.repo_id and er.executor_id = p_executor_id
    where m.status = 'queued'
      and (m.required_platform is null or m.required_platform = v_exec.platform)
+     and not exists (
+       select 1 from unnest(m.depends_on) d(id)
+       left join missions dm on dm.id = d.id
+       where dm.id is null or dm.status not in ('review','staging','approved','released','verified')
+     )
      and (m.preferred_executor_id is null or m.preferred_executor_id = p_executor_id
           or m.updated_at < now() - interval '10 minutes')  -- la preferencia caduca
    order by coalesce(m.preferred_executor_id = p_executor_id, false) desc, m.priority desc, m.created_at asc
@@ -454,6 +483,10 @@ begin
          cost_usd      = coalesce((p_patch->>'cost_usd')::numeric, m.cost_usd),
          acceptance    = coalesce(p_patch->'acceptance', m.acceptance),
          decisions     = coalesce(p_patch->'decisions', m.decisions),
+         plan          = coalesce(p_patch->>'plan', m.plan),
+         executor_checks = coalesce(p_patch->'executor_checks', m.executor_checks),
+         review        = coalesce(p_patch->'review', m.review),
+         ci            = coalesce(p_patch->'ci', m.ci),
          executor_id   = case when p_to in ('queued','orphaned','draft') then null else m.executor_id end,
          preferred_executor_id = case when p_to = 'queued' and v_from in ('waiting_answer','paused_quota','paused') then coalesce(m.executor_id, m.preferred_executor_id) else m.preferred_executor_id end,
          started_at    = case when p_to = 'running' and m.started_at is null then now() else m.started_at end,
@@ -523,6 +556,26 @@ end $$;
 drop trigger if exists missions_invalidate_approvals on missions;
 create trigger missions_invalidate_approvals before update of head_sha on missions
 for each row execute function invalidate_approvals_on_push();
+
+-- Sub-misiones: cuando la última hija llega a revisión (o más allá), la misión padre bloqueada "esperando sub-misiones" vuelve a la cola para integrar.
+create or replace function requeue_parent_when_children_done() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare v_parent missions%rowtype; v_pending int;
+begin
+  if new.parent_mission_id is null or new.status not in ('review','staging','approved','released','verified') then return new; end if;
+  select * into v_parent from missions where id = new.parent_mission_id for update;
+  if not found or v_parent.status <> 'blocked' then return new; end if;
+  select count(*) into v_pending from missions
+   where parent_mission_id = v_parent.id and status not in ('review','staging','approved','released','verified','cancelled');
+  if v_pending = 0 then
+    perform transition_mission(v_parent.id, 'queued', 'sub-misiones listas: integrar y verificar la spec');
+    update missions set preferred_executor_id = coalesce(v_parent.executor_id, v_parent.preferred_executor_id) where id = v_parent.id;
+  end if;
+  return new;
+end $$;
+drop trigger if exists missions_requeue_parent on missions;
+create trigger missions_requeue_parent after update of status on missions
+for each row when (new.parent_mission_id is not null) execute function requeue_parent_when_children_done();
 
 -- Ingesta de ticket con deduplicación por huella (count++ si ya existe en 7 días)
 create or replace function upsert_ticket(p_source ticket_source, p_repo_slug text, p_service text, p_symptom text, p_raw text,
@@ -616,6 +669,7 @@ alter table mission_events enable row level security;
 alter table questions enable row level security;
 alter table evidence enable row level security;
 alter table decisions enable row level security;
+alter table learnings enable row level security;
 alter table approvals enable row level security;
 alter table operations enable row level security;
 alter table usage_ledger enable row level security;
@@ -626,7 +680,7 @@ alter table alerts enable row level security;
 do $$
 declare t text;
 begin
-  foreach t in array array['repos','executor_repos','missions','mission_messages','mission_events','questions','evidence','decisions','approvals','operations','usage_ledger','alerts']
+  foreach t in array array['repos','executor_repos','missions','mission_messages','mission_events','questions','evidence','decisions','learnings','approvals','operations','usage_ledger','alerts']
   loop
     execute format('drop policy if exists team_all on %I', t);
     execute format('create policy team_all on %I for all using (is_team_member()) with check (is_team_member())', t);
