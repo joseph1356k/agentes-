@@ -84,7 +84,11 @@ async function status(): Promise<void> {
 async function loadPublicConfig(): Promise<{ supabase_url?: string; supabase_anon_key?: string; dashboard_url?: string }> {
   const candidates = [process.env.OFICINA_PUBLIC_CONFIG, join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'config', 'oficina.public.json')].filter(Boolean) as string[];
   for (const p of candidates) {
-    try { return JSON.parse(await readFile(p, 'utf8')); } catch { /* siguiente */ }
+    try {
+      const j = JSON.parse(await readFile(p, 'utf8')) as Record<string, unknown>;
+      const str = (k: string) => (typeof j[k] === 'string' && j[k] ? j[k] as string : undefined);
+      return { supabase_url: str('supabase_url'), supabase_anon_key: str('supabase_anon_key'), dashboard_url: str('dashboard_url') };
+    } catch { /* siguiente */ }
   }
   return {};
 }

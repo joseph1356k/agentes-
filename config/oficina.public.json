@@ -1,0 +1,6 @@
+{
+  "_comment": "Valores PÚBLICOS del proyecto de la oficina (no secretos: la clave publicable está pensada para el navegador y RLS protege los datos). Los usa scripts/install-executor.sh → oficina-executor init. Rellenar al crear el proyecto Supabase oficina-ia y el despliegue en Vercel.",
+  "supabase_url": null,
+  "supabase_anon_key": null,
+  "dashboard_url": null
+}

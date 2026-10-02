@@ -71,6 +71,13 @@ if [ -x "$root/scripts/build-prompts-doc.sh" ]; then
   rm -f "$tmp"
 fi
 
+# 7b. SQL de arranque al día (supabase/bootstrap.sql se genera desde migraciones + seed)
+if [ -x "$root/scripts/build-bootstrap-sql.sh" ]; then
+  tmp="$(mktemp)"; OUT="$tmp" bash "$root/scripts/build-bootstrap-sql.sh" >/dev/null 2>&1
+  if diff -q "$tmp" "$root/supabase/bootstrap.sql" >/dev/null 2>&1; then ok "supabase/bootstrap.sql está al día"; else bad "supabase/bootstrap.sql desactualizado: ejecuta scripts/build-bootstrap-sql.sh"; fi
+  rm -f "$tmp"
+fi
+
 # 8. Pruebas de hooks del kit (si existe el harness) y del calificador
 [ -f "$root/evals/grade.test.mjs" ] && { (cd "$root" && node --test evals/grade.test.mjs >/dev/null 2>&1) && ok "pruebas del calificador (node --test evals/grade.test.mjs)" || bad "pruebas del calificador fallan"; }
 
