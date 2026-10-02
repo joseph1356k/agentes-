@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir, hostname as osHostname } from 'node:os';
 import { Queue, type QueueAuth } from './queue.js';
@@ -42,13 +42,30 @@ export async function loadConfig(): Promise<ExecutorConfig> {
 }
 
 export async function loadAuth(): Promise<QueueAuth> {
-  return JSON.parse(await readFile(join(OFICINA_HOME, 'credentials.json'), 'utf8')) as QueueAuth;
+  try {
+    return JSON.parse(await readFile(join(OFICINA_HOME, 'credentials.json'), 'utf8')) as QueueAuth;
+  } catch {
+    throw new Error(`no hay sesión de la cola en ${join(OFICINA_HOME, 'credentials.json')}; ejecuta: oficina-executor login`);
+  }
+}
+
+/** Guarda la sesión (solo lectura para el usuario). Se llama al hacer login y en cada renovación del token. */
+export async function saveAuth(a: QueueAuth): Promise<void> {
+  await mkdir(OFICINA_HOME, { recursive: true });
+  const p = join(OFICINA_HOME, 'credentials.json');
+  await writeFile(`${p}.tmp`, JSON.stringify(a, null, 2), { mode: 0o600 });
+  await rename(`${p}.tmp`, p);
+}
+
+/** Cola conectada con la sesión guardada; persiste los tokens renovados. */
+export async function connectQueue(config?: ExecutorConfig): Promise<Queue> {
+  const c = config ?? await loadConfig();
+  return Queue.connect(c.supabase_url, c.supabase_anon_key, await loadAuth(), saveAuth);
 }
 
 export async function startDaemon(opts: { provider?: Provider; version: string } = { version: '0.1.0' }): Promise<void> {
   const config = await loadConfig();
-  const auth = await loadAuth();
-  const queue = new Queue(config.supabase_url, config.supabase_anon_key, auth);
+  const queue = await connectQueue(config);
   const provider = opts.provider ?? new ClaudeProvider();
   const log = (m: string) => console.log(`[${new Date().toISOString()}] ${m}`);
 

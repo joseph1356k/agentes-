@@ -9,6 +9,6 @@ pnpm dev                     # http://localhost:3200
 pnpm build
 ```
 
-Despliegue: proyecto Vercel `oficina-ia` con `rootDirectory = dashboard`, variables `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `INGEST_TOKEN`. Las tareas periódicas (huérfanas cada minuto, triage cada 3 h) viven en `pg_cron` dentro de Supabase, no en Vercel.
+Despliegue: proyecto Vercel `oficina-ia` con `rootDirectory = dashboard` y solo dos variables públicas, `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` (sin service role; el token de ingesta se genera en `/team` y la base guarda su hash). Las tareas periódicas (huérfanas cada minuto, triage cada 3 h) viven en `pg_cron` dentro de Supabase, no en Vercel.
 
 Mientras Supabase no esté configurado, el dashboard muestra su estructura con un aviso en lugar de fallar.

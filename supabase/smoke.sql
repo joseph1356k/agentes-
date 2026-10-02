@@ -6,7 +6,16 @@ create database oficina_test;
 create schema if not exists auth;
 create or replace function auth.email() returns text language sql stable as $$ select current_setting('app.email', true) $$;
 create or replace function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
+-- roles de Supabase (para probar RLS y permisos como lo hace PostgREST)
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+end $$;
 \i :migration
+\i :migration2
+grant usage on schema public, auth to anon, authenticated;
+grant all on all tables in schema public to anon, authenticated;
+grant usage, select on all sequences in schema public to anon, authenticated;
 
 -- datos
 set app.email = 'dev@itsmiracleai.com';
@@ -33,11 +42,13 @@ set app.email = 'otro@itsmiracleai.com';
 do $$ begin
   if (claim_mission('ex_2')) is not null then raise exception 'ex_2 no tiene repos autorizados'; end if;
 end $$;
--- otro no puede reclamar con el ejecutor de dev
+-- otro no puede reclamar con el ejecutor de dev (llamada por la API: request.jwt.claims presente)
+set request.jwt.claims = '{"role":"authenticated"}';
 do $$ begin
   begin perform claim_mission('ex_1'); raise exception 'debió fallar';
   exception when others then if sqlerrm not like '%no autorizado%' then raise; end if; end;
 end $$;
+reset request.jwt.claims;
 set app.email = 'dev@itsmiracleai.com';
 
 -- transiciones
@@ -169,6 +180,63 @@ do $$ declare v text; begin
   select id into v from claim_mission('ex_1');
   if v is distinct from 'm_p' then raise exception 'ex_1 debía retomar el padre para integrar, obtuvo %', v; end if;
 end $$;
+
+-- seguridad con los roles de la API: miembro autenticado, desconocido autenticado y anónimo
+reset role;
+set app.email = 'dev@itsmiracleai.com';
+set request.jwt.claims = '{"role":"authenticated"}';
+set role authenticated;
+do $$ begin
+  if (select count(*) from team_members) < 1 then raise exception 'el miembro debe ver team_members (sin recursión)'; end if;
+  if (select count(*) from executors) < 1 then raise exception 'el miembro debe ver executors'; end if;
+  perform * from executor_capacity;
+  perform * from mission_metrics;
+  perform * from tickets_sanitized;
+end $$;
+select length(rotate_ingest_token()) > 60 as token_generado \gset
+reset role;
+-- token conocido para la prueba (rotate_ingest_token solo lo muestra una vez)
+update office_secrets set hash = sha256_hex('tok_prueba') where name = 'ingest_token';
+set app.email = '';
+set request.jwt.claims = '{"role":"anon"}';
+set role anon;
+do $$ declare v jsonb; begin
+  if (select count(*) from missions) <> 0 then raise exception 'anon no debe ver misiones'; end if;
+  if (select count(*) from tickets_sanitized) <> 0 then raise exception 'anon no debe ver tickets (vista con security_invoker)'; end if;
+  if (select count(*) from executor_capacity) <> 0 then raise exception 'anon no debe ver ejecutores'; end if;
+  if (select count(*) from office_secrets) <> 0 then raise exception 'anon no debe ver secretos'; end if;
+  begin perform transition_mission('m_p', 'cancelled', 'ataque', '{}'::jsonb); raise exception 'FALLO: anon pudo transicionar';
+  exception when insufficient_privilege then null; end;
+  begin perform upsert_ticket('feedback', 'miracle', null, 'x', 'x', null, null, 'low', 'fp'); raise exception 'FALLO: anon llamó upsert_ticket';
+  exception when insufficient_privilege then null; end;
+  begin perform ingest_ticket('malo', 'miracle', null, 'falla', 'falla', null, null, 'high', 'fp_x'); raise exception 'FALLO: token malo aceptado';
+  exception when invalid_authorization_specification then null; end;
+  v := ingest_ticket('tok_prueba', 'miracle', 'api', 'falla al guardar nota', 'falla al guardar nota', '1.0', '{}'::jsonb, 'high', 'fp_ok');
+  v := ingest_ticket('tok_prueba', 'miracle', 'api', 'falla al guardar nota', 'falla al guardar nota', '1.0', '{}'::jsonb, 'critical', 'fp_ok');
+  if (v->>'count')::int <> 2 then raise exception 'la ingesta debía deduplicar (count=2), obtuvo %', v; end if;
+end $$;
+reset role;
+set app.email = 'intruso@example.com';
+set request.jwt.claims = '{"role":"authenticated"}';
+set role authenticated;
+do $$ begin
+  if (select count(*) from missions) <> 0 then raise exception 'un autenticado ajeno no debe ver misiones'; end if;
+  begin perform claim_mission('ex_1'); raise exception 'FALLO: ajeno reclamó';
+  exception when insufficient_privilege then null; end;
+  begin perform admin_upsert_member('yo@example.com', null, 'owner', null); raise exception 'FALLO: ajeno se dio de alta';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+set app.email = 'dev@itsmiracleai.com';
+set request.jwt.claims = '{"role":"authenticated"}';
+set role authenticated;
+do $$ begin
+  perform admin_upsert_member('nuevo@itsmiracleai.com', 'Nuevo', 'developer', null);
+  if (select role from team_members where email = 'nuevo@itsmiracleai.com') <> 'developer' then raise exception 'alta de miembro esperada'; end if;
+  if (select severity from tickets where fingerprint = 'fp_ok') <> 'critical' then raise exception 'la severidad debía escalar a critical'; end if;
+end $$;
+reset role;
+reset request.jwt.claims;
 
 -- métricas
 select id, status, hours_to_result is not null as has_hours, questions_count from mission_metrics order by id;

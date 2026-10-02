@@ -23,11 +23,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/executors">Ejecutores</Link>
             <Link href="/tickets">Tickets</Link>
             <Link href="/learnings">Aprendizajes</Link>
+            <Link href="/team">Equipo</Link>
           </nav>
           <span className="spacer" />
           {email ? (
             <form action={signOut} className="row">
-              <span className="who">{email}</span>
+              <Link className="who" href="/account">{email}</Link>
               <button className="btn" type="submit">Salir</button>
             </form>
           ) : null}
@@ -35,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="wrap">
           {!SUPABASE_CONFIGURED && (
             <div className="banner">
-              <strong>Supabase pendiente.</strong> Configura <code>NEXT_PUBLIC_SUPABASE_URL</code> y <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> con el proyecto <code>oficina-ia</code> y aplica <code>supabase/migrations/0001_oficina.sql</code> + <code>supabase/seed.sql</code>. Mientras tanto el dashboard muestra su estructura sin datos.
+              <strong>Supabase pendiente.</strong> Configura <code>NEXT_PUBLIC_SUPABASE_URL</code> y <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> con el proyecto <code>oficina-ia</code> y aplica <code>supabase/migrations/*.sql</code> + <code>supabase/seed.sql</code>. Mientras tanto el dashboard muestra su estructura sin datos.
             </div>
           )}
           {children}

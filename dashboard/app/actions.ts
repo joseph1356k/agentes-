@@ -97,6 +97,30 @@ export async function approveMission(formData: FormData): Promise<void> {
   revalidatePath(`/missions/${missionId}`);
 }
 
+export async function addMember(formData: FormData): Promise<void> {
+  const sb = await createClient();
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const password = String(formData.get('password') ?? '').trim();
+  const { error } = await sb.rpc('admin_upsert_member', {
+    p_email: email,
+    p_display_name: String(formData.get('display_name') ?? '').trim() || null,
+    p_role: String(formData.get('role') ?? 'developer'),
+    p_password: password || null,
+  });
+  revalidatePath('/team');
+  if (error) redirect(`/team?error=${encodeURIComponent(error.message)}`);
+  redirect(`/team?ok=${encodeURIComponent(password ? `${email} guardado con contraseña inicial; que la cambie en Cuenta.` : `${email} guardado.`)}`);
+}
+
+export async function removeMember(formData: FormData): Promise<void> {
+  const sb = await createClient();
+  const email = String(formData.get('email') ?? '');
+  const { error } = await sb.rpc('admin_remove_member', { p_email: email });
+  revalidatePath('/team');
+  if (error) redirect(`/team?error=${encodeURIComponent(error.message)}`);
+  redirect(`/team?ok=${encodeURIComponent(`${email} ya no tiene acceso.`)}`);
+}
+
 export async function setPriority(formData: FormData): Promise<void> {
   const sb = await createClient();
   const missionId = String(formData.get('mission_id'));

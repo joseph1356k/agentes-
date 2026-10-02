@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { OFICINA_HOME, loadAuth, loadConfig } from './daemon.js';
+import { OFICINA_HOME, loadAuth, loadConfig, saveAuth } from './daemon.js';
 import { Queue } from './queue.js';
 
 const execFileP = promisify(execFile);
@@ -48,7 +48,7 @@ export async function doctor(): Promise<boolean> {
     }
     try {
       const authq = await loadAuth();
-      const queue = new Queue(config.supabase_url, config.supabase_anon_key, authq);
+      const queue = await Queue.connect(config.supabase_url, config.supabase_anon_key, authq, saveAuth);
       const r = await queue.sb.from('team_members').select('email').eq('email', authq.email).maybeSingle();
       checks.push({ name: 'Supabase (sesión y team_members)', ok: !r.error && !!r.data, detail: r.error ? r.error.message : r.data ? `${authq.email} es miembro` : `${authq.email} no está en team_members`, fix: 'oficina-executor login; pide que añadan tu correo a team_members' });
     } catch (e) { checks.push({ name: 'Supabase (credenciales)', ok: false, detail: e instanceof Error ? e.message : String(e), fix: 'oficina-executor login' }); }

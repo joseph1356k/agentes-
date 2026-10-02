@@ -18,9 +18,3 @@ export async function createClient() {
     },
   });
 }
-
-/** Cliente con service role, solo para rutas de ingesta/cron (nunca en componentes). */
-export function createServiceClient() {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-  return createServerClient(SUPABASE_URL, key, { cookies: { getAll() { return []; }, setAll() { /* sin cookies */ } } });
-}

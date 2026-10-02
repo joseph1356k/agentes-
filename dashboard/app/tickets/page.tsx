@@ -19,7 +19,7 @@ export default async function TicketsPage() {
         <table>
           <thead><tr><th>Severidad</th><th>Fuente</th><th>Síntoma</th><th>Veces</th><th>Estado</th><th>Último</th></tr></thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={6} className="muted">Sin tickets. La ingesta es <code>POST /api/ingest/feedback</code> con <code>Authorization: Bearer INGEST_TOKEN</code>.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={6} className="muted">Sin tickets. La ingesta es <code>POST /api/ingest/feedback</code> con el token que se genera en <a href="/team">Equipo</a>.</td></tr>}
             {rows.map(t => (
               <tr key={t.id}>
                 <td><span className={`pill ${t.severity === 'critical' ? 'bad' : t.severity === 'high' ? 'warm' : ''}`}>{t.severity}</span></td>

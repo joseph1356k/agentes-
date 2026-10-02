@@ -7,11 +7,12 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 tmp="$(mktemp -d)"; chmod 755 "$tmp"
 cp "$root/supabase/migrations/0001_oficina.sql" "$tmp/0001_oficina.sql"
+cp "$root/supabase/migrations/0002_operacion.sql" "$tmp/0002_operacion.sql"
 cp "$root/supabase/smoke.sql" "$tmp/smoke.sql"
 chmod 644 "$tmp"/*.sql
 trap 'rm -rf "$tmp"' EXIT
 if [ "$(id -u)" = 0 ] && id postgres >/dev/null 2>&1 && [ $# -eq 0 ]; then
-  su postgres -c "psql -q -v ON_ERROR_STOP=1 -v migration=$tmp/0001_oficina.sql -f $tmp/smoke.sql"
+  su postgres -c "psql -q -v ON_ERROR_STOP=1 -v migration=$tmp/0001_oficina.sql -v migration2=$tmp/0002_operacion.sql -f $tmp/smoke.sql"
 else
-  psql -q -v ON_ERROR_STOP=1 -v "migration=$tmp/0001_oficina.sql" -f "$tmp/smoke.sql" "$@"
+  psql -q -v ON_ERROR_STOP=1 -v "migration=$tmp/0001_oficina.sql" -v "migration2=$tmp/0002_operacion.sql" -f "$tmp/smoke.sql" "$@"
 fi

@@ -10,10 +10,27 @@ export class Queue {
   readonly sb: SupabaseClient;
   readonly email: string;
 
-  constructor(url: string, anonKey: string, auth: QueueAuth) {
+  private constructor(url: string, anonKey: string, email: string) {
     this.sb = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: true } });
-    this.email = auth.email;
-    void this.sb.auth.setSession({ access_token: auth.access_token, refresh_token: auth.refresh_token });
+    this.email = email;
+  }
+
+  /**
+   * Abre la sesión del desarrollador y la mantiene viva. Supabase rota el refresh token en cada renovación:
+   * `onTokens` recibe cada par nuevo para guardarlo (si no, tras reiniciar el daemon el token viejo ya no sirve).
+   */
+  static async connect(url: string, anonKey: string, auth: QueueAuth, onTokens?: (a: QueueAuth) => Promise<void>): Promise<Queue> {
+    const q = new Queue(url, anonKey, auth.email);
+    const { data, error } = await q.sb.auth.setSession({ access_token: auth.access_token, refresh_token: auth.refresh_token });
+    if (error || !data.session) throw new Error(`sesión de la cola no válida (${error?.message ?? 'sin sesión'}); ejecuta: oficina-executor login`);
+    const save = async (s: { access_token: string; refresh_token: string } | null) => {
+      if (s && onTokens) await onTokens({ email: auth.email, access_token: s.access_token, refresh_token: s.refresh_token }).catch(() => {});
+    };
+    await save(data.session);
+    q.sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') void save(session);
+    });
+    return q;
   }
 
   private unwrap<T>(r: { data: T | null; error: { message: string } | null }, what: string): T {

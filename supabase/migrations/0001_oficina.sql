@@ -73,6 +73,22 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from team_members where email = auth.email());
 $$;
 
+-- security definer: evita la recursión infinita de una política de team_members que consulte team_members
+create or replace function is_team_owner() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from team_members where email = auth.email() and role = 'owner');
+$$;
+
+-- Llamadas desde la API (PostgREST pone request.jwt.claims) exigen ser miembro del equipo.
+-- Llamadas internas (pg_cron, psql, triggers sin petición) pasan.
+create or replace function assert_team_caller() returns void
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if coalesce(current_setting('request.jwt.claims', true), '') <> '' and not is_team_member() then
+    raise exception 'no autorizado: % no es miembro del equipo', coalesce(auth.email(), 'anónimo') using errcode = '42501';
+  end if;
+end $$;
+
 -- ----------------------------------------------------------------------------
 -- Repositorios
 -- ----------------------------------------------------------------------------
@@ -376,9 +392,11 @@ declare
   v_running int;
   v_mission missions%rowtype;
 begin
+  perform assert_team_caller();
   select * into v_exec from executors where id = p_executor_id for update;
   if not found then raise exception 'executor % no existe', p_executor_id; end if;
-  if v_exec.owner_email <> auth.email() and not exists (select 1 from team_members where email = auth.email() and role = 'owner') then
+  if v_exec.owner_email is distinct from auth.email() and not is_team_owner()
+     and coalesce(current_setting('request.jwt.claims', true), '') <> '' then
     raise exception 'no autorizado para reclamar con este ejecutor';
   end if;
   if v_exec.status in ('quota_exhausted','error','offline') then return null; end if;
@@ -429,7 +447,7 @@ begin
   update executors
      set last_heartbeat = now(),
          status = case when p_status = 'online' and exists (select 1 from missions where executor_id = p_executor_id and status in ('claimed','preparing','running')) then 'busy' else p_status end
-   where id = p_executor_id and (owner_email = auth.email() or exists (select 1 from team_members where email = auth.email() and role = 'owner'));
+   where id = p_executor_id and (owner_email = auth.email() or is_team_owner());
   if p_mission_id is not null then
     update missions set updated_at = now() where id = p_mission_id and executor_id = p_executor_id;
   end if;
@@ -444,6 +462,7 @@ declare
   v_ok boolean := false;
   v_row missions%rowtype;
 begin
+  perform assert_team_caller();
   select status into v_from from missions where id = p_mission_id for update;
   if not found then raise exception 'misión % no existe', p_mission_id; end if;
 
@@ -626,6 +645,7 @@ returns text
 language plpgsql security definer set search_path = public as $$
 declare v_repo text; v_new int; v_id text;
 begin
+  perform assert_team_caller();
   select id into v_repo from repos where slug = p_repo_slug;
   if v_repo is null then return null; end if;
   select count(*) into v_new from tickets where repo_id = v_repo and status = 'new';
@@ -643,7 +663,8 @@ end $$;
 -- ----------------------------------------------------------------------------
 -- Vistas de métricas y capacidad
 -- ----------------------------------------------------------------------------
-create or replace view mission_metrics as
+-- Vistas con security_invoker: respetan la RLS de quien consulta (si no, la clave anónima las leería con privilegios del dueño)
+create or replace view mission_metrics with (security_invoker = true) as
 select
   m.id, m.repo_id, m.kind, m.status, m.level, m.risk, m.attempt, m.cost_usd, m.result_verified,
   m.created_at, m.claimed_at, m.started_at, m.finished_at, m.released_at, m.verified_at,
@@ -654,7 +675,7 @@ select
   (select count(*) from mission_events e where e.mission_id = m.id and e.type = 'subagent_start') as subagents_launched
 from missions m;
 
-create or replace view executor_capacity as
+create or replace view executor_capacity with (security_invoker = true) as
 select e.id, e.owner_email, e.hostname, e.status, e.billing, e.max_parallel, e.last_heartbeat,
        (select count(*) from missions m where m.executor_id = e.id and m.status in ('claimed','preparing','running')) as active_missions,
        e.max_parallel - (select count(*) from missions m where m.executor_id = e.id and m.status in ('claimed','preparing','running')) as free_slots
@@ -694,23 +715,21 @@ end $$;
 drop policy if exists team_read on team_members;
 create policy team_read on team_members for select using (is_team_member());
 drop policy if exists owners_write on team_members;
-create policy owners_write on team_members for all
-  using (exists (select 1 from team_members tm where tm.email = auth.email() and tm.role = 'owner'))
-  with check (exists (select 1 from team_members tm where tm.email = auth.email() and tm.role = 'owner'));
+create policy owners_write on team_members for all using (is_team_owner()) with check (is_team_owner());
 
--- Ejecutores: lectura para el equipo; escritura solo del dueño (u owner)
+-- Ejecutores: lectura para el equipo; escritura solo del dueño (u owner) y siempre de un miembro
 drop policy if exists executors_read on executors;
 create policy executors_read on executors for select using (is_team_member());
 drop policy if exists executors_write on executors;
 create policy executors_write on executors for all
-  using (owner_email = auth.email() or exists (select 1 from team_members tm where tm.email = auth.email() and tm.role = 'owner'))
-  with check (owner_email = auth.email() or exists (select 1 from team_members tm where tm.email = auth.email() and tm.role = 'owner'));
+  using (is_team_member() and (owner_email = auth.email() or is_team_owner()))
+  with check (is_team_member() and (owner_email = auth.email() or is_team_owner()));
 
 -- Tickets: el texto crudo (raw_private) no se expone a través de la vista que usan los agentes
 drop policy if exists tickets_team on tickets;
 create policy tickets_team on tickets for all using (is_team_member()) with check (is_team_member());
 
-create or replace view tickets_sanitized as
+create or replace view tickets_sanitized with (security_invoker = true) as
 select id, source, repo_id, service, symptom, version, evidence, severity, fingerprint, count, duplicate_of, status,
        resolution_criteria, mission_id, needs_human, injection_suspected, pii_suspected, first_seen_at, last_seen_at
 from tickets;
@@ -740,3 +759,25 @@ exception when others then null; end $$;
 -- Bucket de evidencia (Storage). En Supabase:
 --   insert into storage.buckets (id, name, public) values ('evidence','evidence', false) on conflict do nothing;
 -- y política de lectura/escritura para miembros del equipo sobre storage.objects (bucket_id = 'evidence').
+
+-- ----------------------------------------------------------------------------
+-- Permisos de ejecución: nada por defecto para PUBLIC/anon; el equipo usa las RPC que comprueban membresía.
+-- Las funciones internas (ingesta, alertas, orfandad, triggers) solo las llaman otras funciones, pg_cron o el dueño.
+-- ----------------------------------------------------------------------------
+do $$
+declare f text;
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then return; end if;
+  execute 'revoke execute on all functions in schema public from public, anon, authenticated';
+  -- usadas por políticas RLS (se evalúan con el rol que consulta)
+  foreach f in array array['is_team_member()', 'is_team_owner()', 'assert_team_caller()'] loop
+    execute format('grant execute on function %s to anon, authenticated', f);
+  end loop;
+  -- API del equipo (cada una comprueba membresía o propiedad)
+  foreach f in array array[
+    'claim_mission(text)', 'heartbeat(text, text, executor_status)',
+    'transition_mission(text, mission_status, text, jsonb)', 'approve_mission(text, text, text, text)',
+    'enqueue_triage_if_needed(text, text)', 'gen_prefixed_id(text)'] loop
+    execute format('grant execute on function %s to authenticated', f);
+  end loop;
+end $$;
