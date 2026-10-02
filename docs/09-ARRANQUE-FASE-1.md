@@ -9,17 +9,14 @@ Todo el código está en la rama `claude/gifted-ride-17mywc` (rama por defecto d
 | Ejecutor | compila, 30 pruebas; login con la misma contraseña del dashboard |
 | Organización Supabase | plan **Pro** (ya no hay límite de 2 proyectos) |
 | Cuenta Vercel | `itsmiracleai` (Hobby), equipo `team_fpnsSZBsvxmIGtFacwEBpYkc` |
-| Lo que el conector no pudo hacer | crear el proyecto Supabase (la llamada caduca a los 60 s esperando aprobación) y crear el proyecto Vercel (rechazado en la ventana de permisos) |
+| Lo que los conectores no pudieron hacer | **Supabase**: `create_project` caduca a los 60 s en el conector, también con la acción aprobada (5 intentos; ninguno dejó un proyecto a medias). **Vercel**: el token del conector lee la cuenta pero no puede escribir en el equipo `the-world-changers` (403 "re-authenticate to this scope") |
 
-Hay dos caminos. El A es aprobar esas dos acciones y yo hago el resto; el B es hacerlo a mano en unos 10 minutos.
+Hay dos caminos. El A es destrabar los conectores y que una sesión haga el resto; el B es hacerlo a mano en unos 10 minutos.
 
-## Camino A: aprobar y que lo haga la sesión
+## Camino A: destrabar los conectores
 
-Aprueba en la ventana de permisos, cuando aparezcan:
-1. `Supabase · create_project` (`oficina-ia`, `us-east-1`, organización `miracle web site clients`).
-2. `Vercel · create_git_project` (`joseph1356k/agentes-`, raíz `dashboard`, proyecto `oficina-ia`).
-
-Con eso aplico `bootstrap.sql`, creo tu usuario owner con una contraseña inicial, pongo las dos variables en Vercel, despliego, compruebo el login y la ingesta, y relleno `config/oficina.public.json` para que el instalador del ejecutor no pida nada.
+1. **Supabase**: crea solo el proyecto vacío desde la web (organización `miracle web site clients` → New project → `oficina-ia`, región `us-east-1`). Lo demás (aplicar `bootstrap.sql`, crear tu usuario owner, rellenar `config/oficina.public.json`) lo hace la sesión con el conector, que sí puede ejecutar SQL.
+2. **Vercel**: en https://claude.ai/customize/connectors reconecta Vercel concediendo acceso al equipo `the-world-changers` y abre una sesión nueva (los conectores se leen al iniciar). La sesión crea el proyecto con raíz `dashboard`, pone las dos variables y despliega.
 
 ## Camino B: a mano
 
